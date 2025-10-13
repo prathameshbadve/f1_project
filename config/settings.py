@@ -99,5 +99,23 @@ class FastF1Config(Config):
         fastf1.set_log_level(self.log_level)
 
 
+class StorageConfig:
+    """Configuration for storage client."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
+        self.access_key = os.getenv("MINIO_ACCESS_KEY")
+        self.secret_key = os.getenv("MINIO_SECRET_KEY")
+        self.secure = os.getenv("MINIO_SECURE").lower() == "true"
+        self.raw_bucket_name = os.getenv("MINIO_BUCKET_RAW")
+        self.processed_bucket_name = os.getenv("MINIO_BUCKET_PROCESSED")
+
+
+# Set up FastF1 config
 fastf1_config = FastF1Config()
 fastf1_config.setup_fastf1()
+
+# Set up Storage Config
+storage_config = StorageConfig()
