@@ -1,6 +1,7 @@
 """
 Logging configuration for the project
 """
+# pylint: disable=line-too-long
 
 import os
 import logging
