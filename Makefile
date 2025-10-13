@@ -43,3 +43,7 @@ lint:
 format:
 	black src/ tests/
 	ruff check --fix src/
+
+# Clean log files
+clean-logfiles:
+	rm -rf monitoring/logs
