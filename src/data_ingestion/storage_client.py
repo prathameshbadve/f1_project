@@ -181,13 +181,52 @@ class StorageClient:
             self.client.stat_object(
                 bucket_name=self.config.raw_bucket_name, object_name=object_key
             )
+            self.logger.info("Object %s exists.", object_key)
             return True
         except S3Error as e:
             if e.code == "NoSuchKey":
+                self.logger.error("Error 404: No such key exists.")
                 return False
             else:
                 self.logger.error("Error checking object existence: %s", str(e))
                 return False
+
+    def get_object_size_mb(self, object_key: str) -> float:
+        """
+        Get the size of an object in the MinIO bucket in megabytes.
+
+        Args:
+            object_key: The key/path of the object in the bucket
+
+        Returns:
+            Size of the object in megabytes (MB)
+
+        Raises:
+            Exception: If the object doesn't exist or there's an error accessing it
+
+        Example:
+            >>> size = storage.get_object_size_mb("2024/bahrain_grand_prix/R/race_results.parquet")
+            >>> print(f"File size: {size:.2f} MB")
+            File size: 2.45 MB
+        """
+
+        try:
+            # Get object stats
+            stat = self.client.stat_object(
+                bucket_name=self.config.raw_bucket_name, object_name=object_key
+            )
+
+            # Convert bytes to megabytes
+            size_mb = stat.size / (1024 * 1024)
+
+            return size_mb
+
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.error(
+                "Error getting size for object '%s': %s",
+                object_key,
+                str(e),
+            )
 
     def list_objects(self, prefix: str = "", recursive: bool = True) -> List[str]:
         """
@@ -265,7 +304,7 @@ class StorageClient:
                 "content_type": stat.content_type,
                 "etag": stat.etag,
             }
-
+            self.logger.info("Fetched metadata for %s", object_key)
             return metadata
 
         except S3Error as e:
@@ -274,34 +313,61 @@ class StorageClient:
 
     def build_object_key(
         self,
-        year: int,
-        event_name: str,
-        session_type: str,
         data_type: str,
+        year: int,
+        event_name: Optional[str] = None,
+        session_type: Optional[str] = None,
     ) -> str:
         """
         Build a standardized object key for F1 data.
 
         Args:
             year: Season year
-            event_name: Name of the event
-            session_type: Q, R, S, etc.
-            data_type: Type of data (race_results, qualifying_results, laps, weather)
+            data_type: Type of data (race_results, qualifying_results, laps, weather, schedule)
+            event_name: Name of the event (required unless data_type is 'schedule')
+            session_type: Q, R, S, etc. (required unless data_type is 'schedule')
 
         Returns:
             Object key string
 
         Example:
-            >>> key = storage.build_object_key(2024, 1, "Bahrain Grand Prix", "race_results")
+            >>> key = storage.build_object_key(2024, "race_results", "Bahrain Grand Prix", "R")
             >>> print(key)
-            '2024/round_01_bahrain_grand_prix/race_results.parquet'
+            '2024/bahrain_grand_prix/R/race_results.parquet'
+
+            >>> key = storage.build_object_key(2024, "schedule")
+            >>> print(key)
+            '2024/schedule.parquet'
         """
+
+        # Special case for schedule data
+        if data_type == "schedule":
+            object_key = f"{year}/season_{data_type}.parquet"
+            self.logger.info(
+                "Built object key for season schedule %d: %s", year, object_key
+            )
+            return object_key
+
+        # For all other data types, event_name and session_type are required
+        if event_name is None:
+            raise ValueError(f"event_name is required for data_type '{data_type}'")
+        if session_type is None:
+            raise ValueError(f"session_type is required for data_type '{data_type}'")
 
         # Clean event name (lowercase, replace spaces with underscores)
         clean_event = event_name.lower().replace(" ", "_")
 
         # Build path: year/round_XX_event_name/data_type.parquet
         object_key = f"{year}/{clean_event}/{session_type}/{data_type}.parquet"
+
+        self.logger.info(
+            "Built object key for %s of %s %s %d: %s",
+            data_type,
+            event_name,
+            session_type,
+            year,
+            object_key,
+        )
 
         return object_key
 
@@ -337,9 +403,13 @@ class StorageClient:
 
         # Map data types to storage names
         data_type_mapping = {
+            "session_info": "session_info",
             "results": "results",
             "laps": "laps",
             "weather": "weather",
+            "race_control_messages": "race_control_messages",
+            "session_status": "session_status",
+            "track_status": "track_status",
         }
 
         for key, storage_name in data_type_mapping.items():
@@ -348,9 +418,9 @@ class StorageClient:
             if df is not None and not df.empty:
                 object_key = self.build_object_key(
                     year=year,
+                    data_type=storage_name,
                     event_name=event_name,
                     session_type=session_type,
-                    data_type=storage_name,
                 )
 
                 success = self.upload_dataframe(df, object_key)
@@ -358,30 +428,6 @@ class StorageClient:
             else:
                 self.logger.debug("Skipping %s - no data available", storage_name)
                 upload_status[storage_name] = False
-
-        return upload_status
-
-    def upload_season_schedule(self, year: int, schedule_df: pd.DataFrame):
-        """
-        Upload the event schedule for a season
-
-        Args:
-            year: Season year
-
-        Returns:
-            Dictionary with upload status for each data type
-        """
-
-        upload_status = {}
-
-        if schedule_df is not None and not schedule_df.empty:
-            object_key = f"{year}/season_schedule.parquet"
-            success = self.upload_dataframe(schedule_df, object_key)
-            upload_status["season_schedule"] = success
-        else:
-            self.logger.debug(
-                "Skipping upload of season %d schedule - no data available", year
-            )
 
         return upload_status
 
@@ -402,7 +448,15 @@ class StorageClient:
         # Categorize objects
         summary = {
             "total_objects": len(objects),
-            "by_type": {"results": 0, "laps": 0, "weather": 0},
+            "by_type": {
+                "session_info": 0,
+                "laps": 0,
+                "results": 0,
+                "weather": 0,
+                "race_control_messages": 0,
+                "session_status": 0,
+                "track_status": 0,
+            },
             "by_year": {},
             "total_size_mb": 0.0,
         }
