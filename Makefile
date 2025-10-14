@@ -1,7 +1,7 @@
 .PHONY: start stop test lint format clean
 
 # start all services
-start:
+start-services:
 	docker-compose -f docker/docker-compose.local.yml up -d
 	@echo "Services started. Access:"
 	@echo "  - MinIO: http://localhost:9001"
@@ -19,7 +19,7 @@ start-postgres:
 	@echo "  - Postgres: localhost:5434"
 
 # Stop all services
-stop:
+stop-services:
 	docker-compose -f docker/docker-compose.local.yml down
 
 # Run tests
