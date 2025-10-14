@@ -147,7 +147,12 @@ class StorageClient:
             buffer = io.BytesIO(response.read())
             df = pd.read_parquet(buffer, engine="pyarrow")
 
-            self.logger.info("✅ Downloaded %d (%d rows)", object_key, len(df))
+            # Automatically find all timedelta columns and replace NaT with None
+            timedelta_cols = df.select_dtypes(include=["timedelta64"]).columns
+            for col in timedelta_cols:
+                df[col] = df[col].replace({pd.NaT: None})
+
+            self.logger.info("✅ Downloaded %s (%d rows)", object_key, len(df))
             return df
 
         except S3Error as e:
@@ -185,7 +190,7 @@ class StorageClient:
             return True
         except S3Error as e:
             if e.code == "NoSuchKey":
-                self.logger.error("Error 404: No such key exists.")
+                self.logger.info("No such key exists.")
                 return False
             else:
                 self.logger.error("Error checking object existence: %s", str(e))
