@@ -159,14 +159,14 @@ class SessionLoader:
         """Checks if the existing file in the bucket is valid"""
 
         if not self.storage_client.object_exists(object_key):
-            self.logger.warning("Session file does not exist: %s", object_key)
+            self.logger.info("Session file does not exist: %s", object_key)
             return False
 
         try:
             data = self.storage_client.download_dataframe(object_key)
 
             if data.empty:
-                self.logger.warning(
+                self.logger.info(
                     "%s file exists but is empty: %s", file_name, object_key
                 )
                 return False
@@ -188,7 +188,7 @@ class SessionLoader:
             return True
 
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.warning(
+            self.logger.error(
                 "Error validating %s file %s: %s", file_name, object_key, str(e)
             )
             return False
@@ -534,6 +534,24 @@ class SessionLoader:
         if "LapTime" in laps.columns:
             laps["LapTimeSeconds"] = laps["LapTime"].dt.total_seconds()
 
+        # Replace NaT with None in all timedelta columns
+        timedelta_cols = [
+            "Time",
+            "LapTime",
+            "PitOutTime",
+            "PitInTime",
+            "Sector1Time",
+            "Sector2Time",
+            "Sector3Time",
+            "Sector1SessionTime",
+            "Sector2SessionTime",
+            "Sector3SessionTime",
+            "LapStartTime",
+            "LapStartDate",
+        ]
+        for col in timedelta_cols:
+            laps[col] = laps[col].replace({pd.NaT: None})
+
         # Add session metadata to each lap
         laps["EventName"] = (
             session_obj.event.EventName if hasattr(session_obj, "event") else None
@@ -553,6 +571,11 @@ class SessionLoader:
             return None
 
         results = session_obj.results.copy()
+
+        # Replace NaT with None in all timedelta columns
+        timedelta_cols = ["Time", "Q1", "Q2", "Q3"]
+        for col in timedelta_cols:
+            results[col] = results[col].replace({pd.NaT: None})
 
         # Add session metadata
         results["EventName"] = (
