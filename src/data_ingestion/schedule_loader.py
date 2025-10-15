@@ -110,7 +110,7 @@ class ScheduleLoader:
     def load_season_schedule(
         self,
         year: int,
-        save_to_file: bool = True,
+        save_to_file: bool = False,
         force_refresh: bool = False,
     ) -> Optional[pd.DataFrame]:
         """Downloads the season schedule from storage if exists or from API"""
@@ -175,7 +175,7 @@ class ScheduleLoader:
 
         try:
             schedule = self.load_season_schedule(
-                year, save_to_file=True, force_refresh=force_refresh
+                year, save_to_file=False, force_refresh=force_refresh
             )
 
             # Filter events based on configuration
