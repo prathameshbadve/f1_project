@@ -4,6 +4,8 @@ Pytest configuration and shared fixtures.
 This file provides common fixtures used across all tests.
 """
 
+# pylint: disable=redefined-outer-name
+
 import os
 import json
 from datetime import timedelta, datetime
@@ -60,9 +62,6 @@ def test_storage_config(test_bucket_name):  # pylint: disable=redefined-outer-na
 def test_storage_client(test_storage_config):  # pylint: disable=redefined-outer-name
     """Storage client configured for test bucket"""
 
-    # Temporarily override the config
-    original_bucket = test_storage_config.raw_bucket_name
-
     client = StorageClient()
 
     # Override bucket name for tests
@@ -108,7 +107,6 @@ def test_race_config():
     return {
         "year": 2024,
         "event_name": "Italian Grand Prix",
-        # "round_number": 16,
         "sessions": ["Q", "R"],
     }
 
@@ -136,14 +134,15 @@ def sample_race_result():
         "HeadshotUrl": "google.com",
         "CountryCode": "NED",
         "Position": 1.0,
-        "ClassifiedPosition": 1,
+        "ClassifiedPosition": "1",
         "GridPosition": 1.0,
-        "Q1": timedelta(minutes=1, seconds=30),
-        "Q2": timedelta(minutes=1, seconds=29),
-        "Q3": timedelta(minutes=1, seconds=28),
-        "Time": timedelta(hours=1, minutes=30, seconds=45),
+        "Q1": pd.Timedelta(minutes=1, seconds=30),
+        "Q2": pd.Timedelta(minutes=1, seconds=29),
+        "Q3": pd.Timedelta(minutes=1, seconds=28),
+        "Time": pd.Timedelta(hours=1, minutes=30, seconds=45),
         "Status": "Finished",
         "Points": 25.0,
+        "Laps": 53.0,
         "Year": 2024,
         "EventName": "Italian Grand Prix",
         "SessionName": "Race",
@@ -188,30 +187,30 @@ def sample_race_results_df():
             "HeadshotUrl": ["google.com"] * 5,
             "CountryCode": ["NED", "MEX", "MON", "ESP", "GBR"],
             "Position": [1.0, 2.0, 3.0, 4.0, 5.0],
-            "ClassifiedPosition": [1, 2, 3, 4, 5],
+            "ClassifiedPosition": ["1", "2", "3", "4", "5"],
             "GridPosition": [1.0, 2.0, 3.0, 4.0, 5.0],
             "Q1": [
-                timedelta(minutes=1, seconds=30),
-                timedelta(minutes=1, seconds=35),
-                timedelta(minutes=1, seconds=37),
-                timedelta(minutes=1, seconds=41),
-                timedelta(minutes=1, seconds=45),
+                pd.Timedelta(minutes=1, seconds=30),
+                pd.Timedelta(minutes=1, seconds=35),
+                pd.Timedelta(minutes=1, seconds=37),
+                pd.Timedelta(minutes=1, seconds=41),
+                pd.Timedelta(minutes=1, seconds=45),
             ],
             "Q2": [
-                timedelta(minutes=1, seconds=30),
-                timedelta(minutes=1, seconds=35),
-                timedelta(minutes=1, seconds=37),
-                timedelta(minutes=1, seconds=41),
-                timedelta(minutes=1, seconds=45),
+                pd.Timedelta(minutes=1, seconds=30),
+                pd.Timedelta(minutes=1, seconds=35),
+                pd.Timedelta(minutes=1, seconds=37),
+                pd.Timedelta(minutes=1, seconds=41),
+                pd.Timedelta(minutes=1, seconds=45),
             ],
             "Q3": [
-                timedelta(minutes=1, seconds=30),
-                timedelta(minutes=1, seconds=35),
-                timedelta(minutes=1, seconds=37),
-                timedelta(minutes=1, seconds=41),
-                timedelta(minutes=1, seconds=45),
+                pd.Timedelta(minutes=1, seconds=30),
+                pd.Timedelta(minutes=1, seconds=35),
+                pd.Timedelta(minutes=1, seconds=37),
+                pd.Timedelta(minutes=1, seconds=41),
+                pd.Timedelta(minutes=1, seconds=45),
             ],
-            "Time": [timedelta(hours=1, minutes=30, seconds=45)] * 5,
+            "Time": [pd.Timedelta(hours=1, minutes=30, seconds=45)] * 5,
             "Status": ["Finished"] * 5,
             "Points": [26.0, 18.0, 15.0, 12.0, 10.0],
             "Year": [2024] * 5,
@@ -227,46 +226,37 @@ def sample_lap_data():
     """Sample lap data row"""
 
     return {
-        # Timing data
         "Time": pd.Timedelta("00:15:23.456"),
         "LapTime": pd.Timedelta("00:01:32.847"),
         "LapNumber": 8.0,
         "LapStartTime": pd.Timedelta("00:13:50.609"),
         "LapStartDate": pd.Timestamp("2024-09-01 13:13:50.609"),
-        # Driver info
         "Driver": "VER",
         "DriverNumber": "1",
         "Team": "Red Bull Racing",
-        # Stint info
         "Stint": 1.0,
         "PitOutTime": pd.Timedelta("00:00:15.234"),
         "PitInTime": None,
-        # Sector times
         "Sector1Time": pd.Timedelta("00:00:28.456"),
         "Sector2Time": pd.Timedelta("00:00:35.123"),
         "Sector3Time": pd.Timedelta("00:00:29.268"),
         "Sector1SessionTime": pd.Timedelta("00:14:19.065"),
         "Sector2SessionTime": pd.Timedelta("00:14:54.188"),
         "Sector3SessionTime": pd.Timedelta("00:15:23.456"),
-        # Speed traps
         "SpeedI1": 312.5,
         "SpeedI2": 298.3,
         "SpeedFL": 305.7,
         "SpeedST": 328.2,
-        # Lap quality
         "IsPersonalBest": True,
         "Deleted": False,
         "DeletedReason": "",
         "IsAccurate": True,
         "FastF1Generated": False,
-        # Tyre info
         "Compound": "SOFT",
         "TyreLife": 8,
         "FreshTyre": False,
-        # Track conditions
         "TrackStatus": "1",  # Green flag
         "Position": 1.0,
-        # Metadata
         "EventName": "Italian Grand Prix",
         "SessionName": "Race",
         "SessionDate": pd.Timestamp("2024-09-01 13:00:00"),
@@ -407,6 +397,7 @@ def mock_empty_fastf1_session():
 @pytest.fixture
 def fixtures_dir():
     """Directory for test fixtures"""
+
     return Path(__file__).parent / "fixtures"
 
 
@@ -457,8 +448,9 @@ def load_fixture(fixtures_dir):
 # ============================================================================
 
 
-def cleanup_test_bucket(storage_client, bucket_name):
+def cleanup_test_bucket(storage_client):
     """Clean up test bucket after tests"""
+
     try:
         objects = storage_client.list_objects(prefix="")
         for obj_key in objects:
@@ -470,6 +462,7 @@ def cleanup_test_bucket(storage_client, bucket_name):
 @pytest.fixture
 def cleanup_test_data(test_storage_client):
     """Fixture to clean up test data after each test"""
+
     yield
     # Cleanup after test
     try:
