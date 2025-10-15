@@ -105,7 +105,7 @@ class ResultSchema(BaseModel):
     TeamId: str = Field(..., description="Lowercase name of team")
 
     # Race results
-    Position: float = Field(..., description="Finishing position")
+    Position: float = Field(..., ge=0, le=22, description="Finishing position")
     ClassifiedPosition: str = Field(..., description="Classified position")
     GridPosition: float = Field(
         ..., ge=0, le=22, description="Starting grid position (0 for pit start)"
@@ -162,7 +162,7 @@ class LapsSchema(BaseModel):
     )
     DriverNumber: str = Field(..., description="Driver number as string")
     LapTime: pd.Timedelta = Field(..., description="Recorded lap time")
-    LapNumber: float = Field(..., description="Recorded lap number")
+    LapNumber: float = Field(..., ge=1, description="Recorded lap number")
     Stint: float = Field(..., description="Stint number")
     PitOutTime: Optional[pd.Timedelta] = Field(
         None, description="Session time when car exited the pit"
@@ -295,6 +295,26 @@ class WeatherSchema(BaseModel):
     EventName: str = Field(..., description="Event name")
     SessionName: str = Field(..., description="Session name")
     SessionDate: pd.Timestamp = Field(..., description="Date of event session")
+
+    @field_validator("AirTemp")
+    @classmethod
+    def validate_air_temp(cls, v: float, info) -> float:  # pylint: disable=unused-argument
+        """Ensure air temp is within reasonable range"""
+
+        if v < 0:
+            logger.warning("Air temperature (%.1f) is below freezing.", v)
+        elif v > 50:
+            logger.warning("Air temperature (%.1f) is unusually high.", v)
+        return v
+
+    @field_validator("Humidity")
+    @classmethod
+    def validate_humidity(cls, v: float, info) -> float:  # pylint: disable=unused-argument
+        """Ensure air temp is within reasonable range"""
+
+        if v > 100:
+            logger.warning("Humidity (%.1f) higher than 100%%", v)
+        return v
 
     @field_validator("TrackTemp")
     @classmethod
