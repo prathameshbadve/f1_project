@@ -208,3 +208,6 @@ __marimo__/
 
 # FastF1 Cache
 data/external
+
+# notebooks
+notebooks
