@@ -563,7 +563,7 @@ def validate_session_data(
 
     # Validate session info
     if "session_info" in session_data and session_data["session_info"] is not None:
-        validation_results["session_info"] = validator.validate_results(
+        validation_results["session_info"] = validator.validate_session_info(
             session_data["session_info"]
         )
 
