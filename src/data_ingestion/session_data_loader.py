@@ -225,6 +225,7 @@ class SessionLoader:
         event_name: str,
         session_type: str,
         force_refresh: bool = False,
+        save_to_storage: bool = False,
     ) -> Dict[str, Any]:
         """
         Load comprehensive session data with intelligent caching
@@ -269,7 +270,12 @@ class SessionLoader:
                     "Loading missing data from API: %s", missing_file_names
                 )
                 return self._load_partial_session_data(
-                    year, event_name, session_type, cached_data, missing_file_names
+                    year,
+                    event_name,
+                    session_type,
+                    cached_data,
+                    missing_file_names,
+                    save_to_storage,
                 )
 
         # Step 2: Load complete session from API
@@ -279,7 +285,12 @@ class SessionLoader:
             event_name,
             session_type,
         )
-        return self._load_complete_session_from_api(year, event_name, session_type)
+        return self._load_complete_session_from_api(
+            year,
+            event_name,
+            session_type,
+            save_to_storage,
+        )
 
     def _check_complete_session_cache(
         self,
@@ -362,6 +373,7 @@ class SessionLoader:
         session_type: str,
         cached_data: Dict[str, Any],
         missing_file_names: List[str],
+        save_to_storage: bool,
     ):
         """Load only missing data types from API and merge with cached data"""
 
@@ -399,7 +411,7 @@ class SessionLoader:
                     newly_loaded_data[file_name] = None
 
             # Save newly loaded data
-            if newly_loaded_data:
+            if newly_loaded_data and save_to_storage:
                 _ = self.storage_client.upload_session_data(
                     year,
                     event_name,
@@ -434,6 +446,7 @@ class SessionLoader:
         year: int,
         event_name: str,
         session_type: str,
+        save_to_storage: bool,
     ) -> Dict[str, Any]:
         """Load complete session data from API"""
 
@@ -455,12 +468,13 @@ class SessionLoader:
             }
 
             # Save all data
-            self.storage_client.upload_session_data(
-                year,
-                event_name,
-                session_type,
-                session_data,
-            )
+            if save_to_storage:
+                self.storage_client.upload_session_data(
+                    year,
+                    event_name,
+                    session_type,
+                    session_data,
+                )
 
             self.logger.info(
                 "Successfully loaded complete session data: %d %s %s",
@@ -735,9 +749,12 @@ class SessionLoader:
 
         cache_status = self.is_session_cached(year, event_name, session_type)
 
+        # Clean event name (lowercase, replace spaces with underscores)
+        clean_event_name = event_name.lower().replace(" ", "_")
+
         summary = {
-            "session_id": f"{year}_{event_name}_{session_type}",
-            "session_objects_prefix": f"{year}/{event_name}/{session_type}",
+            "session_id": f"{year}_{clean_event_name}_{session_type}",
+            "session_objects_prefix": f"{year}/{clean_event_name}/{session_type}",
             "cache_status": cache_status,
             "cached_data_types": [dt for dt, cached in cache_status.items() if cached],
             "missing_data_types": [
