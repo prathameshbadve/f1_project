@@ -80,49 +80,55 @@ class SessionInfoSchema(BaseModel):
     )
     round_number: int = Field(..., description="Round number in the season")
     official_event_name: str = Field(..., description="Official name of the event")
+    sesion_1: str = Field(..., description="Name of session 1")
+    sesion_2: str = Field(..., description="Name of session 2")
+    sesion_3: str = Field(..., description="Name of session 3")
+    sesion_4: str = Field(..., description="Name of session 4")
+    sesion_5: str = Field(..., description="Name of session 5")
 
 
-class ResultSchema(BaseModel):
-    """Schema for race/sprint/qualifying/FP results"""
+class RaceResultSchema(BaseModel):
+    """Schema for race/sprint results"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    # Driver Identifiers
+    # Driver & Team Identifiers
     DriverNumber: str = Field(..., description="Driver number as string")
     BroadcastName: str = Field(..., description="Driver broadcast name")
     Abbreviation: str = Field(
         ..., min_length=3, max_length=3, description="3-letter driver code"
     )
-    DriverId: str = Field(..., description="Lowercase last name of dirver")
-    FirstName: str = Field(..., description="Driver first name")
-    LastName: str = Field(..., description="Driver last name")
-    FullName: str = Field(..., description="Driver full name")
-    CountryCode: str = Field(..., description="3-letter country code")
-
-    # Team Identifiers
+    DriverId: Optional[str] = Field(None, description="Lowercase last name of dirver")
     TeamName: str = Field(..., description="Constructor/team name")
     TeamColor: str = Field(..., description="Hex code of team color")
     TeamId: str = Field(..., description="Lowercase name of team")
 
+    FirstName: str = Field(..., description="Driver first name")
+    LastName: str = Field(..., description="Driver last name")
+    FullName: str = Field(..., description="Driver full name")
+
+    CountryCode: str = Field(..., description="3-letter country code")
+
     # Race results
-    Position: float = Field(..., ge=0, le=22, description="Finishing position")
+    Position: float = Field(..., ge=1, le=22, description="Finishing position")
     ClassifiedPosition: str = Field(..., description="Classified position")
     GridPosition: float = Field(
         ..., ge=0, le=22, description="Starting grid position (0 for pit start)"
     )
-    Points: float = Field(..., ge=0, le=26, description="Championship points earned")
-    Status: str = Field(..., description="Finish status")
-    Laps: float = Field(..., ge=0, le=100, description="Laps completed by the driver")
 
-    # Timing (Optional - may be null for DNF)
+    # Qualifying times (Null in race results)
+    Q1: pd.Timedelta | None = None
+    Q2: pd.Timedelta | None = None
+    Q3: pd.Timedelta | None = None
+
+    # Timing (Optional - may be null for DNF, R)
     Time: Optional[pd.Timedelta] = Field(
         None, description="Race time or time behind winner"
     )
 
-    # Qualifying times (may be in race results)
-    Q1: Optional[pd.Timedelta] = Field(None, description="Q1 time")
-    Q2: Optional[pd.Timedelta] = Field(None, description="Q2 time")
-    Q3: Optional[pd.Timedelta] = Field(None, description="Q3 time")
+    Status: str = Field(..., description="Finish status")
+    Points: float = Field(..., ge=0, le=26, description="Championship points earned")
+    Laps: float = Field(..., ge=0, le=100, description="Laps completed by the driver")
 
     # Metadata
     EventName: str = Field(..., description="Event name")
@@ -146,6 +152,161 @@ class ResultSchema(BaseModel):
         except ValueError as e:
             logger.warning("Invalid driver number: %s", v)
             raise ValueError(f"Driver number must be numeric, got {v}") from e
+        return v
+
+    @field_validator("SessionName")
+    @classmethod
+    def validate_session_type(cls, v: str) -> str:
+        """Ensure session type is a race"""
+        valid_types = ["Race", "Sprint"]
+        if v not in valid_types:
+            logger.warning("Invalid race session type: %s", v)
+        return v
+
+
+class PracticeSessionSchema(BaseModel):
+    """Schema for practice session results (FP1, FP2, FP3)"""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    # Driver & Team Identifiers
+    DriverNumber: str = Field(..., description="Driver number as string")
+    BroadcastName: str = Field(..., description="Driver broadcast name")
+    Abbreviation: str = Field(
+        ..., min_length=3, max_length=3, description="3-letter driver code"
+    )
+    DriverId: Optional[str] = Field(None, description="Lowercase last name of dirver")
+    TeamName: str = Field(..., description="Constructor/team name")
+    TeamColor: str = Field(..., description="Hex code of team color")
+    TeamId: Optional[str] = Field(None, description="Lowercase name of team")
+
+    FirstName: str = Field(..., description="Driver first name")
+    LastName: str = Field(..., description="Driver last name")
+    FullName: str = Field(..., description="Driver full name")
+
+    CountryCode: str = Field(..., description="3-letter country code")
+
+    # Position, GridPosition, and Points are typically null in practice
+    Position: float | None = None
+    ClassifiedPosition: Optional[str] = ""
+    GridPosition: float | None = None
+
+    # Qualifying times (Null in free practice results)
+    Q1: pd.Timedelta | None = None
+    Q2: pd.Timedelta | None = None
+    Q3: pd.Timedelta | None = None
+
+    # Best lap time in practice
+    Time: pd.Timedelta | None = None
+
+    Status: Optional[str] = ""
+    Points: float | None = None
+    Laps: float | None = None
+
+    # Metadata
+    EventName: str = Field(..., description="Event name")
+    SessionName: str = Field(..., description="Session name")
+    SessionDate: pd.Timestamp = Field(..., description="Date of event session")
+
+    @field_validator("Abbreviation")
+    @classmethod
+    def validate_abbreviation(cls, v: str) -> str:
+        """Ensure abbreviation is uppercase"""
+        return v.upper()
+
+    @field_validator("DriverNumber")
+    @classmethod
+    def validate_driver_number(cls, v: str) -> str:
+        """Ensure driver number is valid"""
+        try:
+            num = int(v)
+            if not (1 <= num <= 99):
+                raise ValueError(f"Driver number must be between 1 and 99, got {num}")
+        except ValueError as e:
+            logger.warning("Invalid driver number: %s", v)
+            raise ValueError(f"Driver number must be numeric, got {v}") from e
+        return v
+
+    @field_validator("SessionName")
+    @classmethod
+    def validate_session_type(cls, v: str) -> str:
+        """Ensure session type is a practice session"""
+        valid_types = ["Practice 1", "Practice 2", "Practice 3"]
+        if v not in valid_types:
+            logger.warning("Invalid practice session type: %s", v)
+        return v
+
+
+class QualifyingResultSchema(BaseModel):
+    """Schema for race/sprint results"""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    # Driver & Team Identifiers
+    DriverNumber: str = Field(..., description="Driver number as string")
+    BroadcastName: str = Field(..., description="Driver broadcast name")
+    Abbreviation: str = Field(
+        ..., min_length=3, max_length=3, description="3-letter driver code"
+    )
+    DriverId: Optional[str] = Field(None, description="Lowercase last name of dirver")
+    TeamName: str = Field(..., description="Constructor/team name")
+    TeamColor: str = Field(..., description="Hex code of team color")
+    TeamId: str = Field(..., description="Lowercase name of team")
+
+    FirstName: str = Field(..., description="Driver first name")
+    LastName: str = Field(..., description="Driver last name")
+    FullName: str = Field(..., description="Driver full name")
+
+    CountryCode: str = Field(..., description="3-letter country code")
+
+    # Race results
+    Position: float = Field(..., ge=1, le=22, description="Finishing position")
+    ClassifiedPosition: Optional[str] = ""
+    GridPosition: float | None = None
+
+    # Qualifying times (Null in race results)
+    Q1: Optional[pd.Timedelta] = Field(None, description="Best time in Q1")
+    Q2: Optional[pd.Timedelta] = Field(None, description="Best time in Q2")
+    Q3: Optional[pd.Timedelta] = Field(None, description="Best time in Q3")
+
+    # Timing (Optional - may be null for DNF, R)
+    Time: pd.Timedelta | None = None
+
+    Status: Optional[str] = ""
+    Points: float | None = None
+    Laps: float | None = None
+
+    # Metadata
+    EventName: str = Field(..., description="Event name")
+    SessionName: str = Field(..., description="Session name")
+    SessionDate: pd.Timestamp = Field(..., description="Date of event session")
+
+    @field_validator("Abbreviation")
+    @classmethod
+    def validate_abbreviation(cls, v: str) -> str:
+        """Ensure abbreviation is uppercase"""
+        return v.upper()
+
+    @field_validator("DriverNumber")
+    @classmethod
+    def validate_driver_number(cls, v: str) -> str:
+        """Ensure driver number is valid"""
+        try:
+            num = int(v)
+            if not 1 <= num <= 99:
+                raise ValueError(f"Driver number must be between 1 and 99, got {num}")
+        except ValueError as e:
+            logger.warning("Invalid driver number: %s", v)
+            raise ValueError(f"Driver number must be numeric, got {v}") from e
+        return v
+
+    @field_validator("SessionName")
+    @classmethod
+    def validate_session_type(cls, v: str) -> str:
+        """Ensure session type is a qualifying or sprint qualifying"""
+        valid_types = ["Qualifying", "Sprint Qualifying", "Sprint Shootout"]
+        if v not in valid_types:
+            logger.warning("Invalid qualifying session type: %s", v)
         return v
 
 
@@ -428,7 +589,7 @@ class DataValidator:
         Returns:
             Tuple of (valid_df, list_of_errors)
         """
-        return self._validate_dataframe(df, ResultSchema, raise_on_error)
+        return self._validate_dataframe(df, RaceResultSchema, raise_on_error)
 
     def validate_lap_data(
         self, df: pd.DataFrame, raise_on_error: bool = False
