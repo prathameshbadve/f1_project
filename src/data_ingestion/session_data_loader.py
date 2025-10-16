@@ -523,11 +523,16 @@ class SessionLoader:
         # Add event metadata if available
         if hasattr(session_obj, "event"):
             event = session_obj.event
-            session_info["event_format"] = (getattr(event, "EventFormat", None),)
-            session_info["round_number"] = (getattr(event, "RoundNumber", None),)
-            session_info["official_event_name"] = (
-                getattr(event, "OfficialEventName", None),
+            session_info["event_format"] = getattr(event, "EventFormat", None)
+            session_info["round_number"] = getattr(event, "RoundNumber", None)
+            session_info["official_event_name"] = getattr(
+                event, "OfficialEventName", None
             )
+            session_info["session_1"] = getattr(event, "Session1", None)
+            session_info["session_2"] = getattr(event, "Session2", None)
+            session_info["session_3"] = getattr(event, "Session3", None)
+            session_info["session_4"] = getattr(event, "Session4", None)
+            session_info["session_5"] = getattr(event, "Session5", None)
 
         session_info_df = pd.DataFrame(session_info)
         self.logger.debug("Extracted session info: %s", session_info)
