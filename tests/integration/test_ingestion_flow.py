@@ -5,13 +5,13 @@ Tests with real FastF1 API using 2024 Italian Grand Prix.
 Requires internet connection and Docker/MinIO running.
 """
 
-import pytest
 import time
+import pytest
 
 from src.data_ingestion.fastf1_client import FastF1Client
 from src.data_ingestion.storage_client import StorageClient
 from src.data_ingestion.schemas import validate_session_data, DataValidator
-# from src.data_ingestion.in import IngestionPipeline
+from src.data_ingestion.data_ingestion_pipeline import IngestionPipeline
 
 
 @pytest.mark.integration
@@ -28,9 +28,10 @@ class TestFastF1ToStorage:
         cleanup_test_data,
     ):
         """Test fetching race results and storing in MinIO"""
+
         # Fetch session
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event"], "R"
+            test_race_config["year"], test_race_config["event_name"], "R"
         )
 
         assert session is not None
@@ -71,7 +72,7 @@ class TestFastF1ToStorage:
         """Test fetching qualifying results and storing"""
         # Fetch session
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event"], "Q"
+            test_race_config["year"], test_race_config["event_name"], "Q"
         )
 
         assert session is not None
@@ -107,7 +108,7 @@ class TestFastF1ToValidationToStorage:
         """Test fetching, validating, and storing race data"""
         # Fetch session
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event"], "R"
+            test_race_config["year"], test_race_config["event_name"], "R"
         )
 
         # Extract data
@@ -118,7 +119,7 @@ class TestFastF1ToValidationToStorage:
         results["SessionType"] = "R"
 
         # Validate
-        valid_results, errors = data_validator.validate_race_results(results)
+        valid_results, errors = data_validator.validate_results(results)
 
         # Should have mostly valid data
         assert len(valid_results) > 0
@@ -142,7 +143,7 @@ class TestFastF1ToValidationToStorage:
         """Test that validation filters out invalid rows"""
         # Fetch real data
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event"], "R"
+            test_race_config["year"], test_race_config["event_name"], "R"
         )
 
         results = session.results.copy()
@@ -154,7 +155,7 @@ class TestFastF1ToValidationToStorage:
         original_length = len(results)
 
         # Validate
-        valid_results, errors = data_validator.validate_race_results(results)
+        valid_results, errors = data_validator.validate_results(results)
 
         # Should have data (may have some errors but should get most rows)
         assert len(valid_results) > 0
@@ -184,7 +185,7 @@ class TestCompleteRaceWeekend:
         for session_type in ["Q", "R"]:
             # Fetch
             session = fastf1_client.get_session(
-                test_race_config["year"], test_race_config["event"], session_type
+                test_race_config["year"], test_race_config["event_name"], session_type
             )
 
             if session is None:
@@ -218,7 +219,7 @@ class TestCompleteRaceWeekend:
                 session_data["weather"] = weather
 
             # Validate
-            validated = validate_session_data(session_data, session_type)
+            validated = validate_session_data(session_data)
 
             # Store
             for data_type, (valid_df, errors) in validated.items():
@@ -248,6 +249,7 @@ class TestPipelineIntegration:
         cleanup_test_data,
     ):
         """Test pipeline ingesting a single session"""
+
         pipeline = IngestionPipeline(
             skip_existing=False, validate_data=True, delay_between_sessions=2
         )
@@ -257,7 +259,7 @@ class TestPipelineIntegration:
 
         result = pipeline.ingest_session(
             year=test_race_config["year"],
-            event=test_race_config["event"],
+            event=test_race_config["event_name"],
             session_type="R",
         )
 
@@ -283,7 +285,7 @@ class TestPipelineIntegration:
 
         results = pipeline.ingest_race_weekend(
             year=test_race_config["year"],
-            event=test_race_config["event"],
+            event=test_race_config["event_name"],
             session_types=["Q", "R"],
         )
 
@@ -346,7 +348,7 @@ class TestDataConsistency:
         """Test that data remains consistent after upload/download"""
         # Fetch
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event"], "R"
+            test_race_config["year"], test_race_config["event_name"], "R"
         )
 
         results = session.results.copy()
@@ -397,7 +399,7 @@ class TestPerformance:
 
         result = pipeline.ingest_session(
             year=test_race_config["year"],
-            event=test_race_config["event"],
+            event=test_race_config["event_name"],
             session_type="R",
         )
 
@@ -421,7 +423,7 @@ def test_end_to_end_smoke_test(
 
     # Fetch
     session = fastf1_client.get_session(
-        test_race_config["year"], test_race_config["event"], "R"
+        test_race_config["year"], test_race_config["event_name"], "R"
     )
 
     assert session is not None
@@ -434,7 +436,7 @@ def test_end_to_end_smoke_test(
     results["SessionType"] = "R"
 
     # Validate
-    valid_results, errors = validator.validate_race_results(results)
+    valid_results, errors = validator.validate_results(results)
     assert len(valid_results) > 0
 
     # Store
