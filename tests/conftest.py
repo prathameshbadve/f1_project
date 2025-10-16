@@ -8,7 +8,7 @@ This file provides common fixtures used across all tests.
 
 import os
 import json
-from datetime import timedelta, datetime
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import Mock
 import socket
@@ -213,6 +213,7 @@ def sample_race_results_df():
             "Time": [pd.Timedelta(hours=1, minutes=30, seconds=45)] * 5,
             "Status": ["Finished"] * 5,
             "Points": [26.0, 18.0, 15.0, 12.0, 10.0],
+            "Laps": [53.0] * 5,
             "Year": [2024] * 5,
             "EventName": ["Italian Grand Prix"] * 5,
             "SessionName": ["Race"] * 5,
@@ -264,6 +265,50 @@ def sample_lap_data():
 
 
 @pytest.fixture
+def sample_lap_data_df():
+    """Sample lap data df"""
+
+    return pd.DataFrame(
+        {
+            "Time": [pd.Timedelta("00:15:23.456")] * 3,
+            "LapTime": [pd.Timedelta("00:01:32.847")] * 3,
+            "LapNumber": [8.0, 9.0, 10.0],
+            "LapStartTime": [pd.Timedelta("00:13:50.609")] * 3,
+            "LapStartDate": [pd.Timestamp("2024-09-01 13:13:50.609")] * 3,
+            "Driver": ["VER", "HAM", "LEC"],
+            "DriverNumber": ["1", "44", "16"],
+            "Team": ["Red Bull Racing", "Mercedes", "Ferrari"],
+            "Stint": [1.0, 2.0, 2.0],
+            "PitOutTime": [pd.Timedelta("00:00:15.234")] * 3,
+            "PitInTime": [None] * 3,
+            "Sector1Time": [pd.Timedelta("00:00:28.456")] * 3,
+            "Sector2Time": [pd.Timedelta("00:00:35.123")] * 3,
+            "Sector3Time": [pd.Timedelta("00:00:29.268")] * 3,
+            "Sector1SessionTime": [pd.Timedelta("00:14:19.065")] * 3,
+            "Sector2SessionTime": [pd.Timedelta("00:14:54.188")] * 3,
+            "Sector3SessionTime": [pd.Timedelta("00:15:23.456")] * 3,
+            "SpeedI1": [312.5] * 3,
+            "SpeedI2": [298.3] * 3,
+            "SpeedFL": [305.7] * 3,
+            "SpeedST": [328.2] * 3,
+            "IsPersonalBest": [True] * 3,
+            "Deleted": [False] * 3,
+            "DeletedReason": [""] * 3,
+            "IsAccurate": [True] * 3,
+            "FastF1Generated": [False] * 3,
+            "Compound": ["SOFT", "HARD", "MEDIUM"],
+            "TyreLife": [8, 8, 9],
+            "FreshTyre": [False] * 3,
+            "TrackStatus": ["1"] * 3,  # Green flag
+            "Position": [1.0, 2.0, 3.0],
+            "EventName": ["Italian Grand Prix"] * 3,
+            "SessionName": ["Race"] * 3,
+            "SessionDate": [pd.Timestamp("2024-09-01 13:00:00")] * 3,
+        }
+    )
+
+
+@pytest.fixture
 def sample_weather_data():
     """Sample weather data row"""
 
@@ -280,6 +325,27 @@ def sample_weather_data():
         "SessionName": "Race",
         "SessionDate": pd.Timestamp("2024-09-01 13:00:00"),
     }
+
+
+@pytest.fixture
+def sample_weather_data_df():
+    """Sample weather data df"""
+
+    return pd.DataFrame(
+        {
+            "Time": [pd.Timedelta("00:00:15.234")] * 3,
+            "AirTemp": [28.5] * 3,
+            "Humidity": [45.2] * 3,
+            "Pressure": [1013.2] * 3,
+            "Rainfall": [False] * 3,
+            "TrackTemp": [42.3] * 3,
+            "WindDirection": [180] * 3,
+            "WindSpeed": [3.5] * 3,
+            "EventName": ["Italian Grand Prix"] * 3,
+            "SessionName": ["Race"] * 3,
+            "SessionDate": [pd.Timestamp("2024-09-01 13:00:00")] * 3,
+        }
+    )
 
 
 @pytest.fixture
@@ -325,45 +391,176 @@ def mock_fastf1_session():
     """Mock FastF1 session object"""
 
     session = Mock()
-    session.event = {
-        "EventName": "Italian Grand Prix",
-        "EventDate": pd.Timestamp("2024-09-01"),
-        "RoundNumber": 16,
-        "Country": "Italy",
-    }
+    session.event = pd.DataFrame(
+        {
+            "RoundNumber": [9],
+            "Country": ["Austria"],
+            "Location": ["Spielberg"],
+            "OfficialEventName": ["FORMULA 1 ROLEX GROSSER PREIS VON ÖSTERREICH 2023"],
+            "EventDate": [pd.Timestamp("2023-07-02 00:00:00")],
+            "EventName": ["Austrian Grand Prix"],
+            "EventFormat": ["sprint_shootout"],
+            "Session1": ["Practice 1"],
+            "Session1Date": [pd.Timestamp("2023-06-30 13:30:00+02:00")],
+            "Session1DateUtc": [pd.Timestamp("2023-06-30 11:30:00")],
+            "Session2": ["Qualifying"],
+            "Session2Date": [pd.Timestamp("2023-06-30 17:00:00+02:00")],
+            "Session2DateUtc": [pd.Timestamp("2023-06-30 15:00:00")],
+            "Session3": ["Sprint Shootout"],
+            "Session3Date": [pd.Timestamp("2023-07-01 12:00:00+02:00")],
+            "Session3DateUtc": [pd.Timestamp("2023-07-01 10:00:00")],
+            "Session4": ["Sprint"],
+            "Session4Date": [pd.Timestamp("2023-07-01 16:30:00+02:00")],
+            "Session4DateUtc": [pd.Timestamp("2023-07-01 14:30:00")],
+            "Session5": ["Race"],
+            "Session5Date": [pd.Timestamp("2023-07-02 15:00:00+02:00")],
+            "Session5DateUtc": [pd.Timestamp("2023-07-02 13:00:00")],
+            "F1ApiSupport": [True],
+        }
+    )
+
     session.name = "Race"
 
     # Mock results
     results_data = {
-        "DriverNumber": ["1", "11", "16"],
-        "BroadcastName": ["M VERSTAPPEN", "S PEREZ", "C LECLERC"],
-        "Abbreviation": ["VER", "PER", "LEC"],
-        "TeamName": ["Red Bull Racing", "Red Bull Racing", "Ferrari"],
-        "Position": [1.0, 2.0, 3.0],
-        "GridPosition": [1.0, 2.0, 3.0],
-        "Points": [25.0, 18.0, 15.0],
-        "Status": ["Finished", "Finished", "Finished"],
+        "DriverNumber": ["63", "81", "55", "44", "1"],
+        "BroadcastName": [
+            "G RUSSELL",
+            "O PIASTRI",
+            "C SAINZ",
+            "L HAMILTON",
+            "M VERSTAPPEN",
+        ],
+        "Abbreviation": ["RUS", "PIA", "SAI", "HAM", "VER"],
+        "DriverId": ["russell", "piastri", "sainz", "hamilton", "max_verstappen"],
+        "TeamName": ["Mercedes", "McLaren", "Ferrari", "Mercedes", "Red Bull Racing"],
+        "TeamColor": ["27F4D2", "FF8000", "E80020", "27F4D2", "3671C6"],
+        "TeamId": ["mercedes", "mclaren", "ferrari", "mercedes", "red_bull"],
+        "FirstName": ["George", "Oscar", "Carlos", "Lewis", "Max"],
+        "LastName": ["Russell", "Piastri", "Sainz", "Hamilton", "Verstappen"],
+        "FullName": [
+            "George Russell",
+            "Oscar Piastri",
+            "Carlos Sainz",
+            "Lewis Hamilton",
+            "Max Verstappen",
+        ],
+        "HeadshotUrl": ["google.com"] * 5,
+        "CountryCode": ["GBR", "AUS", "ESP", "GBR", "NED"],
+        "Position": [1.0, 2.0, 3.0, 4.0, 5.0],
+        "ClassifiedPosition": ["1", "2", "3", "4", "5"],
+        "GridPosition": [3.0, 7.0, 4.0, 5.0, 1.0],
+        "Q1": [None, None, None, None, None],
+        "Q2": [None, None, None, None, None],
+        "Q3": [None, None, None, None, None],
+        "Time": [
+            pd.Timedelta("0 days 01:24:22.798000"),
+            pd.Timedelta("0 days 00:00:01.906000"),
+            pd.Timedelta("0 days 00:00:04.533000"),
+            pd.Timedelta("0 days 00:00:23.142000"),
+            pd.Timedelta("0 days 00:00:37.253000"),
+        ],
+        "Status": ["Finished", "Finished", "Finished", "Finished", "Finished"],
+        "Points": [25.0, 18.0, 15.0, 12.0, 10.0],
+        "Laps": [71.0, 71.0, 71.0, 71.0, 71.0],
+        "EventName": ["Austrian Grand Prix"] * 5,
+        "SessionName": ["Race"] * 5,
+        "SessionDate": [pd.Timestamp("2024-06-28 12:30:00+0200", tz="UTC+02:00")] * 5,
     }
     session.results = pd.DataFrame(results_data)
 
     # Mock laps
     laps_data = {
-        "DriverNumber": ["1", "1", "1"],
-        "LapNumber": [1, 2, 3],
-        "LapTime": [timedelta(minutes=1, seconds=32)] * 3,
-        "Compound": ["SOFT", "SOFT", "SOFT"],
-        "TyreLife": [1, 2, 3],
+        "Time": [
+            pd.Timedelta("0 days 01:00:17.176000"),
+            pd.Timedelta("0 days 01:00:13.035000"),
+            pd.Timedelta("0 days 01:00:18.001000"),
+        ],
+        "Driver": ["RUS", "VER", "HAM"],
+        "DriverNumber": ["63", "1", "44"],
+        "LapTime": [
+            pd.Timedelta("0 days 00:01:10.467000"),
+            pd.Timedelta("0 days 00:01:09.903000"),
+            pd.Timedelta("0 days 00:01:10.621000"),
+        ],
+        "LapNumber": [4.0, 4.0, 4.0],
+        "Stint": [1.0, 1.0, 1.0],
+        "PitOutTime": [None, None, None],
+        "PitInTime": [None, None, None],
+        "Sector1Time": [
+            pd.Timedelta("0 days 00:00:17.555000"),
+            pd.Timedelta("0 days 00:00:17.571000"),
+            pd.Timedelta("0 days 00:00:17.336000"),
+        ],
+        "Sector2Time": [
+            pd.Timedelta("0 days 00:00:31.631000"),
+            pd.Timedelta("0 days 00:00:31.180000"),
+            pd.Timedelta("0 days 00:00:31.922000"),
+        ],
+        "Sector3Time": [
+            pd.Timedelta("0 days 00:00:21.281000"),
+            pd.Timedelta("0 days 00:00:21.152000"),
+            pd.Timedelta("0 days 00:00:21.363000"),
+        ],
+        "Sector1SessionTime": [
+            pd.Timedelta("0 days 00:59:24.312000"),
+            pd.Timedelta("0 days 00:59:20.752000"),
+            pd.Timedelta("0 days 00:59:24.773000"),
+        ],
+        "Sector2SessionTime": [
+            pd.Timedelta("0 days 00:59:55.943000"),
+            pd.Timedelta("0 days 00:59:51.932000"),
+            pd.Timedelta("0 days 00:59:56.695000"),
+        ],
+        "Sector3SessionTime": [
+            pd.Timedelta("0 days 01:00:17.224000"),
+            pd.Timedelta("0 days 01:00:13.084000"),
+            pd.Timedelta("0 days 01:00:18.058000"),
+        ],
+        "SpeedI1": [296.0, 293.0, 309.0],
+        "SpeedI2": [228.0, 230.0, 229.0],
+        "SpeedFL": [271.0, 270.0, 276.0],
+        "SpeedST": [289.0, 289.0, 297.0],
+        "IsPersonalBest": [False, False, False],
+        "Compound": ["MEDIUM", "MEDIUM", "MEDIUM"],
+        "TyreLife": [4.0, 4.0, 4.0],
+        "FreshTyre": [True, True, True],
+        "Team": ["Mercedes", "Red Bull Racing", "Mercedes"],
+        "LapStartTime": [
+            pd.Timedelta("0 days 00:59:06.709000"),
+            pd.Timedelta("0 days 00:59:03.132000"),
+            pd.Timedelta("0 days 00:59:07.380000"),
+        ],
+        "LapStartDate": [None, None, None],
+        "TrackStatus": ["1", "1", "1"],
+        "Position": [3.0, 1.0, 4.0],
+        "Deleted": [False, False, False],
+        "DeletedReason": ["", "", ""],
+        "FastF1Generated": [False, False, False],
+        "IsAccurate": [True, True, True],
+        "EventName": ["Austrian Grand Prix"] * 3,
+        "SessionName": ["Race"] * 3,
+        "SessionDate": [pd.Timestamp("2024-06-28 12:30:00+0200", tz="UTC+02:00")] * 3,
     }
     session.laps = pd.DataFrame(laps_data)
 
     # Mock weather
     weather_data = {
-        "Time": [datetime.now()] * 3,
-        "AirTemp": [28.5, 28.6, 28.7],
-        "TrackTemp": [42.0, 42.1, 42.2],
-        "Humidity": [45.0, 45.1, 45.2],
-        "Pressure": [1013.0, 1013.1, 1013.2],
+        "Time": [
+            pd.Timedelta("0 days 00:00:59.837000"),
+            pd.Timedelta("0 days 00:01:59.841000"),
+            pd.Timedelta("0 days 00:02:59.844000"),
+        ],
+        "AirTemp": [29.1, 29.0, 29.0],
+        "Humidity": [36.0, 35.0, 36.0],
+        "Pressure": [932.9, 932.8, 932.9],
         "Rainfall": [False, False, False],
+        "TrackTemp": [46.2, 45.9, 45.5],
+        "WindDirection": [272, 346, 235],
+        "WindSpeed": [1.8, 2.3, 1.7],
+        "EventName": ["Austrian Grand Prix"] * 3,
+        "SessionName": ["Race"] * 3,
+        "SessionDate": [pd.Timestamp("2024-06-28 12:30:00+0200", tz="UTC+02:00")] * 3,
     }
     session.weather_data = pd.DataFrame(weather_data)
 
