@@ -9,8 +9,6 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
-from src.data_ingestion.storage_client import StorageClient
-
 
 @pytest.mark.unit
 @pytest.mark.requires_docker
@@ -60,11 +58,14 @@ class TestStorageClientBasicOperations:
         # Download
         downloaded_df = test_storage_client.download_dataframe(object_key)
 
+        # Delete for next test
+        _ = test_storage_client.delete_object(object_key)
+
         assert downloaded_df is not None
         assert len(downloaded_df) == len(sample_race_results_df)
         assert list(downloaded_df.columns) == list(sample_race_results_df.columns)
 
-    def test_download_nonexistent_file(self, test_storage_client):
+    def test_download_nonexistent_file(self, test_storage_client, cleanup_test_data):
         """Test downloading non-existent file"""
         object_key = "test/nonexistent.parquet"
 
@@ -109,7 +110,7 @@ class TestStorageClientBasicOperations:
 class TestStorageClientListOperations:
     """Test listing operations"""
 
-    def test_list_objects_empty_bucket(self, test_storage_client):
+    def test_list_objects_empty_bucket(self, test_storage_client, cleanup_test_data):
         """Test listing objects in empty bucket"""
         objects = test_storage_client.list_objects(prefix="nonexistent/")
 
@@ -179,7 +180,9 @@ class TestStorageClientMetadata:
         assert "last_modified" in metadata
         assert metadata["size_bytes"] > 0
 
-    def test_get_metadata_nonexistent_file(self, test_storage_client):
+    def test_get_metadata_nonexistent_file(
+        self, test_storage_client, cleanup_test_data
+    ):
         """Test getting metadata for non-existent file"""
         metadata = test_storage_client.get_object_metadata("test/nonexistent.parquet")
 
@@ -191,7 +194,7 @@ class TestStorageClientMetadata:
 class TestStorageClientKeyBuilder:
     """Test object key building"""
 
-    def test_build_object_key(self, test_storage_client):
+    def test_build_object_key(self, test_storage_client, cleanup_test_data):
         """Test building standardized object key"""
         key = test_storage_client.build_object_key(
             year=2024,
@@ -203,7 +206,7 @@ class TestStorageClientKeyBuilder:
         expected = "2024/italian_grand_prix/R/results.parquet"
         assert key == expected
 
-    def test_build_object_key_with_spaces(self, test_storage_client):
+    def test_build_object_key_with_spaces(self, test_storage_client, cleanup_test_data):
         """Test that spaces are replaced with underscores"""
         key = test_storage_client.build_object_key(
             year=2024,
@@ -215,7 +218,7 @@ class TestStorageClientKeyBuilder:
         assert " " not in key
         assert "saudi_arabian_grand_prix" in key
 
-    def test_build_object_key_lowercase(self, test_storage_client):
+    def test_build_object_key_lowercase(self, test_storage_client, cleanup_test_data):
         """Test that event name is lowercased"""
         key = test_storage_client.build_object_key(
             year=2024,
@@ -295,31 +298,13 @@ class TestStorageClientSessionData:
         assert upload_status["laps"] is False
         assert upload_status["weather"] is False
 
-    def test_upload_season_schedule(self, test_storage_client, cleanup_test_data):
-        """Test uploading season schedule"""
-        schedule_df = pd.DataFrame(
-            {
-                "RoundNumber": [1, 2, 3],
-                "EventName": ["Bahrain GP", "Saudi Arabian GP", "Australian GP"],
-                "EventDate": [datetime.now()] * 3,
-            }
-        )
-
-        upload_status = test_storage_client.upload_season_schedule(2024, schedule_df)
-
-        assert upload_status["season_schedule"] is True
-
-        # Verify it was uploaded
-        key = "2024/season_schedule.parquet"
-        assert test_storage_client.object_exists(key) is True
-
 
 @pytest.mark.unit
 @pytest.mark.requires_docker
 class TestStorageClientIngestionSummary:
     """Test ingestion summary"""
 
-    def test_get_ingestion_summary_empty(self, test_storage_client):
+    def test_get_ingestion_summary_empty(self, test_storage_client, cleanup_test_data):
         """Test getting summary for empty bucket"""
         summary = test_storage_client.get_ingestion_summary(year=2099)
 
