@@ -1,0 +1,10 @@
+# Dagster workspace configuration
+# Defines where Dagster should look for code locations (your pipeline definitions)
+
+load_from:
+  # Python module configuration
+  # This tells Dagster to load the 'defs' object from dagster_project/__init__.py
+  - python_module:
+      module_name: dagster_project
+      working_directory: /opt/dagster/app
+      attribute: defs
