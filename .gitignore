@@ -214,9 +214,12 @@ notebooks
 
 # AWS setup files
 access-key.json
-aws_setup_guide.md
 cloudtrail-bucket-policy.json
 lifecycle-raw.json
 policy-data-ingestion.json
 policy-data-processing.json
 trust-policy-github.json
+aws_setup_guide.md
+
+# GitHub Action guide
+github_actions_guide.md
