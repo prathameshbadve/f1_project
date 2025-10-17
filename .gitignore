@@ -211,3 +211,12 @@ data/external
 
 # notebooks
 notebooks
+
+# AWS setup files
+access-key.json
+aws_setup_guide.md
+cloudtrail-bucket-policy.json
+lifecycle-raw.json
+policy-data-ingestion.json
+policy-data-processing.json
+trust-policy-github.json
