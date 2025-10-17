@@ -1,0 +1,10 @@
+# Include base requirements
+-r base.txt
+
+# Dagster Core - Orchestration engine
+dagster==1.5.13
+dagster-webserver==1.5.13
+dagster-postgres==0.21.13
+
+# Logging and Monitoring
+structlog==25.4.0
