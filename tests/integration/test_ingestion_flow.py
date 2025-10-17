@@ -6,12 +6,16 @@ Requires internet connection and Docker/MinIO running.
 """
 
 import time
+import logging
+
 import pytest
 
 from src.data_ingestion.fastf1_client import FastF1Client
 from src.data_ingestion.storage_client import StorageClient
 from src.data_ingestion.schemas import validate_session_data, DataValidator
 from src.data_ingestion.data_ingestion_pipeline import IngestionPipeline
+
+logging.getLogger("faker").setLevel(logging.WARNING)
 
 
 @pytest.mark.integration
