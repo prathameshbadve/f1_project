@@ -1,0 +1,78 @@
+# Dockerfile for Dagster services (webserver and daemon)
+# Based on Python 3.11 slim image for smaller size
+
+FROM python:3.11-slim
+
+# Prevent Python from writing .pyc files and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Set working directory
+WORKDIR /opt/dagster/app
+
+# Install system dependencies required for Python packages
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip install --no-cache-dir --upgrade pip
+
+# Copy requirements file first (for Docker layer caching)
+COPY requirements/ ./requirements/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements/dagster.txt
+
+# Create directory structure
+RUN mkdir -p /opt/dagster/app/dagster_project/assets && \
+    mkdir -p /opt/dagster/app/dagster_project/jobs && \
+    mkdir -p /opt/dagster/app/dagster_project/schedules && \
+    mkdir -p /opt/dagster/app/dagster_project/sensors && \
+    mkdir -p /opt/dagster/app/dagster_project/resources && \
+    mkdir -p /opt/dagster/app/config && \
+    mkdir -p /opt/dagster/app/scripts
+
+# Copy application code
+COPY dagster_project/ /opt/dagster/app/dagster_project/
+COPY config/ /opt/dagster/app/config/
+COPY workspace.yaml /opt/dagster/app/workspace.yaml
+
+# Copy scripts (optional, for utility functions)
+COPY scripts/ /opt/dagster/app/scripts/
+
+# Set Python path so imports work correctly
+ENV PYTHONPATH=/opt/dagster/app:$PYTHONPATH
+
+# Create dagster home directory (where dagster.yaml lives)
+ENV DAGSTER_HOME=/opt/dagster/dagster_home
+RUN mkdir -p $DAGSTER_HOME
+
+# Copy dagster.yaml to dagster home
+COPY dagster_project/dagster.yaml $DAGSTER_HOME/dagster.yaml
+
+# Create directory for compute logs
+RUN mkdir -p /tmp/dagster/logs && \
+    chmod -R 777 /tmp/dagster/logs
+
+# Create a non-root user for security
+RUN useradd -m -u 1000 dagster && \
+    chown -R dagster:dagster /opt/dagster && \
+    chown -R dagster:dagster /tmp/dagster
+
+# Switch to non-root user
+USER dagster
+
+# Expose port for webserver
+EXPOSE 3000
+
+# Health check for webserver (when running as webserver)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3000/server_info || exit 1
+
+# Default command (will be overridden in docker-compose)
+CMD ["dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-w", "/opt/dagster/app/workspace.yaml"]
