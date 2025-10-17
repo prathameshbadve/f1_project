@@ -1,6 +1,7 @@
 services:
   minio:
     image: minio/minio
+    container_name: f1-minio
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -15,9 +16,13 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+      start_period: 10s
+    networks:
+      - f1-network
 
   postgres:
     image: postgres:16-alpine
+    container_name: f1-postgres
     ports:
       - "5434:5432"
     volumes:
@@ -26,14 +31,19 @@ services:
       POSTGRES_USER: f1user
       POSTGRES_PASSWORD: f1pass
       POSTGRES_DB: f1_data
+      POSTGRES_INITDB_ARGS: "-E UTF8"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U f1user -d f1_data"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    networks:
+      - f1-network
 
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.10.0
+    container_name: f1-mlflow
     ports:
       - "8080:5000"
     volumes:
@@ -48,9 +58,160 @@ services:
       --host 0.0.0.0
       --port 5000
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - f1-network
+
+  dagster-webserver:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfiles/Dockerfile.dagster
+    container_name: f1-dagster-webserver
+    ports:
+      - "3000:3000"
+    environment:
+      # Dagster PostgreSQL configuration
+      DAGSTER_POSTGRES_USER: f1user
+      DAGSTER_POSTGRES_PASSWORD: f1pass
+      DAGSTER_POSTGRES_DB: f1_data
+      DAGSTER_POSTGRES_HOST: postgres
+      DAGSTER_POSTGRES_PORT: 5432
+      DATABASE_URL: postgresql://f1user:f1pass@postgres:5432/f1_data
+
+      # Environment
+      ENVIRONMENT: development
+
+      # MinIO configuration
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_RAW: f1-raw-data-dev
+      MINIO_BUCKET_PROCESSED: f1-processed-data-dev
+      MINIO_SECURE: "false"
+
+      # Database configuration (for application use)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: f1_data
+      DB_USER: f1user
+      DB_PASSWORD: f1pass
+
+      # MLflow configuration
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_EXPERIMENT_NAME: f1-race-prediction-development
+
+      # # F1 API configuration
+      # F1_API_BASE_URL: https://ergast.com/api/f1
+      # F1_API_RATE_LIMIT_DELAY: "1.0"
+      # F1_API_TIMEOUT: "30"
+
+      # Dagster configuration
+      DAGSTER_HOME: /opt/dagster/dagster_home
+    volumes:
+      # Mount code for live reload during development
+      - ../dagster_project:/opt/dagster/app/dagster_project
+      - ../config:/opt/dagster/app/config
+      - ../scripts:/opt/dagster/app/scripts
+      - dagster_logs:/tmp/dagster/logs
+    command: dagster-webserver -h 0.0.0.0 -p 3000 -w /opt/dagster/app/workspace.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/server_info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - f1-network
+    restart: unless-stopped
+
+  dagster-daemon:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfiles/Dockerfile.dagster
+    container_name: f1-dagster-daemon
+    environment:
+      # Dagster PostgreSQL configuration
+      DAGSTER_POSTGRES_USER: f1user
+      DAGSTER_POSTGRES_PASSWORD: f1pass
+      DAGSTER_POSTGRES_DB: f1_data
+      DAGSTER_POSTGRES_HOST: postgres
+      DAGSTER_POSTGRES_PORT: 5432
+      DATABASE_URL: postgresql://f1user:f1pass@postgres:5432/f1_data
+
+      # Environment
+      ENVIRONMENT: development
+
+      # MinIO configuration
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_RAW: f1-raw-data-dev
+      MINIO_BUCKET_PROCESSED: f1-processed-data-dev
+      MINIO_SECURE: "false"
+
+      # Database configuration (for application use)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: f1_data
+      DB_USER: f1user
+      DB_PASSWORD: f1pass
+
+      # MLflow configuration
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_EXPERIMENT_NAME: f1-race-prediction-development
+
+      # # F1 API configuration
+      # F1_API_BASE_URL: https://ergast.com/api/f1
+      # F1_API_RATE_LIMIT_DELAY: "1.0"
+      # F1_API_TIMEOUT: "30"
+
+      # Dagster configuration
+      DAGSTER_HOME: /opt/dagster/dagster_home
+    volumes:
+      # Mount code for live reload during development
+      - ../dagster_project:/opt/dagster/app/dagster_project
+      - ../config:/opt/dagster/app/config
+      - ../scripts:/opt/dagster/app/scripts
+      - dagster_logs:/tmp/dagster/logs
+    command: dagster-daemon run -w /opt/dagster/app/workspace.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+      dagster-webserver:
+        condition: service_started
+    networks:
+      - f1-network
+    restart: unless-stopped
 
 volumes:
   minio_data:
+    name: f1-minio-data
   postgres_data:
+    name: f1-postgres-data
   mlflow_data:
+    name: f1-mlflow-data
+  dagster_logs:
+    name: f1-dagster-logs
+
+networks:
+  f1-network:
+    name: f1-network
+    driver: bridge
