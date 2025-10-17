@@ -164,7 +164,7 @@ class RaceResultSchema(BaseModel):
         return v
 
 
-class PracticeSessionSchema(BaseModel):
+class PracticeResultSchema(BaseModel):
     """Schema for practice session results (FP1, FP2, FP3)"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
