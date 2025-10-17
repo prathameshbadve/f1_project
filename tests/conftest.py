@@ -223,6 +223,127 @@ def sample_race_results_df():
 
 
 @pytest.fixture
+def sample_qualifying_results_data_df():
+    """Sample qualifying results df"""
+
+    return pd.DataFrame(
+        {
+            "DriverNumber": ["16", "81", "55", "4", "63"],
+            "BroadcastName": [
+                "C LECLERC",
+                "O PIASTRI",
+                "C SAINZ",
+                "L NORRIS",
+                "G RUSSELL",
+            ],
+            "Abbreviation": ["LEC", "PIA", "SAI", "NOR", "RUS"],
+            "DriverId": ["leclerc", "piastri", "sainz", "norris", "russell"],
+            "TeamName": ["Ferrari", "McLaren", "Ferrari", "McLaren", "Mercedes"],
+            "TeamColor": ["E80020", "FF8000", "E80020", "FF8000", "27F4D2"],
+            "TeamId": ["ferrari", "mclaren", "ferrari", "mclaren", "mercedes"],
+            "FirstName": ["Charles", "Oscar", "Carlos", "Lando", "George"],
+            "LastName": ["Leclerc", "Piastri", "Sainz", "Norris", "Russell"],
+            "FullName": [
+                "Charles Leclerc",
+                "Oscar Piastri",
+                "Carlos Sainz",
+                "Lando Norris",
+                "George Russell",
+            ],
+            "HeadshotUrl": [
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/C/CHALEC01_Charles_Leclerc/chalec01.png.transform/1col/image.png",
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/O/OSCPIA01_Oscar_Piastri/oscpia01.png.transform/1col/image.png",
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/C/CARSAI01_Carlos_Sainz/carsai01.png.transform/1col/image.png",
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LANNOR01_Lando_Norris/lannor01.png.transform/1col/image.png",
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/G/GEORUS01_George_Russell/georus01.png.transform/1col/image.png",
+            ],
+            "CountryCode": ["MON", "AUS", "ESP", "GBR", "GBR"],
+            "Position": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "ClassifiedPosition": ["", "", "", "", ""],
+            "GridPosition": [None, None, None, None, None],
+            "Q1": [
+                pd.Timedelta("0 days 00:01:11.584000"),
+                pd.Timedelta("0 days 00:01:11.500000"),
+                pd.Timedelta("0 days 00:01:11.543000"),
+                pd.Timedelta("0 days 00:01:11.760000"),
+                pd.Timedelta("0 days 00:01:11.492000"),
+            ],
+            "Q2": [
+                pd.Timedelta("0 days 00:01:10.825000"),
+                pd.Timedelta("0 days 00:01:10.756000"),
+                pd.Timedelta("0 days 00:01:11.075000"),
+                None,
+                None,
+            ],
+            "Q3": [
+                pd.Timedelta("0 days 00:01:10.270000"),
+                pd.Timedelta("0 days 00:01:10.424000"),
+                pd.Timedelta("0 days 00:01:10.518000"),
+                None,
+                None,
+            ],
+            "Time": [None, None, None, None, None],
+            "Status": ["", "", "", "", ""],
+            "Points": [None, None, None, None, None],
+            "Laps": [None, None, None, None, None],
+            "EventName": ["Italian Grand Prix"] * 5,
+            "SessionName": ["Qualifying"] * 5,
+            "SessionDate": [pd.Timestamp("2024-09-01 13:00:00")] * 5,
+        }
+    )
+
+
+@pytest.fixture
+def sample_practice_results_data_df():
+    """Sample practice results df"""
+
+    return pd.DataFrame(
+        {
+            "DriverNumber": ["1", "2", "3", "4", "10"],
+            "BroadcastName": [
+                "M VERSTAPPEN",
+                "L SARGEANT",
+                "D RICCIARDO",
+                "L NORRIS",
+                "P GASLY",
+            ],
+            "Abbreviation": ["VER", "SAR", "RIC", "NOR", "GAS"],
+            "DriverId": ["max_verstappen", "sargeant", "ricciardo", "norris", "gasly"],
+            "TeamName": ["Red Bull Racing", "Williams", "RB", "McLaren", "Alpine"],
+            "TeamColor": ["3671C6", "64C4FF", "6692FF", "FF8000", "0093cc"],
+            "TeamId": ["red_bull", "williams", "rb", "mclaren", "alpine"],
+            "FirstName": ["Max", "Logan", "Daniel", "Lando", "Pierre"],
+            "LastName": ["Verstappen", "Sargeant", "Ricciardo", "Norris", "Gasly"],
+            "FullName": [
+                "Max Verstappen",
+                "Logan Sargeant",
+                "Daniel Ricciardo",
+                "Lando Norris",
+                "Pierre Gasly",
+            ],
+            "HeadshotUrl": [
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/M/MAXVER01_Max_Verstappen/maxver01.png.transform/1col/image.png",
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LOGSAR01_Logan_Sargeant/logsar01.png.transform/1col/image.png",
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/D/DANRIC01_Daniel_Ricciardo/danric01.png.transform/1col/image.png",
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LANNOR01_Lando_Norris/lannor01.png.transform/1col/image.png",
+                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/P/PIEGAS01_Pierre_Gasly/piegas01.png.transform/1col/image.png",
+            ],
+            "CountryCode": ["NED", "USA", "AUS", "GBR", "FRA"],
+            "Position": [None, None, None, None, None],
+            "ClassifiedPosition": ["", "", "", "", ""],
+            "GridPosition": [None, None, None, None, None],
+            "Q1": [None, None, None, None, None],
+            "Q2": [None, None, None, None, None],
+            "Q3": [None, None, None, None, None],
+            "Time": [None, None, None, None, None],
+            "Status": ["", "", "", "", ""],
+            "Points": [None, None, None, None, None],
+            "Laps": [None, None, None, None, None],
+        }
+    )
+
+
+@pytest.fixture
 def sample_lap_data():
     """Sample lap data row"""
 
@@ -344,6 +465,132 @@ def sample_weather_data_df():
             "EventName": ["Italian Grand Prix"] * 3,
             "SessionName": ["Race"] * 3,
             "SessionDate": [pd.Timestamp("2024-09-01 13:00:00")] * 3,
+        }
+    )
+
+
+@pytest.fixture
+def sample_race_control_messages_data():
+    """Sample race control messages data row"""
+
+    return {
+        "Time": pd.Timestamp("2024-09-01 12:57:04"),
+        "Category": "Drs",
+        "Message": "DRS DISABLED",
+        "Status": "DISABLED",
+        "Flag": None,
+        "Scope": None,
+        "Sector": None,
+        "RacingNumber": None,
+        "Lap": 1,
+        "EventName": "Italian Grand Prix",
+        "SessionName": "Race",
+        "SessionDate": pd.Timestamp("2024-09-01 13:00:00"),
+    }
+
+
+@pytest.fixture
+def sample_race_control_messages_data_df():
+    """Sample race control messages data df"""
+
+    return pd.DataFrame(
+        {
+            "Time": [
+                pd.Timestamp("2024-09-01 12:57:04"),
+                pd.Timestamp("2024-09-01 13:03:34"),
+                pd.Timestamp("2024-09-01 13:05:13"),
+            ],
+            "Category": ["Drs", "Flag", "Drs"],
+            "Message": ["DRS DISABLED", "GREEN LIGHT - PIT EXIT OPEN", "DRS ENABLED"],
+            "Status": ["DISABLED", None, "ENABLED"],
+            "Flag": [None, "GREEN", None],
+            "Scope": [None, "Track", None],
+            "Sector": [None, None, None],
+            "RacingNumber": [None, None, None],
+            "Lap": [1, 1, 2],
+            "EventName": ["Italian Grand Prix"] * 3,
+            "SessionName": ["Race"] * 3,
+            "SessionDate": [pd.Timestamp("2024-09-01 13:00:00")] * 3,
+        }
+    )
+
+
+@pytest.fixture
+def sample_session_status_data():
+    """Sample session status row"""
+
+    return {
+        "Time": pd.Timedelta("0 days 00:00:05.174000"),
+        "Status": "Inactive",
+        "EventName": "Italian Grand Prix",
+        "SessionName": "Race",
+        "SessionDate": pd.Timestamp("2024-09-01 13:00:00"),
+    }
+
+
+@pytest.fixture
+def sample_session_status_data_df():
+    """Sample session status df"""
+
+    return pd.DataFrame(
+        {
+            "Time": [
+                pd.Timedelta("0 days 00:00:05.174000"),
+                pd.Timedelta("0 days 00:55:50.494000"),
+                pd.Timedelta("0 days 02:10:31.456000"),
+                pd.Timedelta("0 days 02:12:50.731000"),
+                pd.Timedelta("0 days 02:12:50.731000"),
+            ],
+            "Status": ["Inactive", "Started", "Finished", "Finalised", "Ends"],
+            "EventName": ["Italian Grand Prix"] * 5,
+            "SessionName": ["Race"] * 5,
+            "SessionDate": [pd.Timestamp("2024-09-01 13:00:00")] * 5,
+        }
+    )
+
+
+@pytest.fixture
+def sample_track_status_data():
+    """Sample track status row"""
+
+    return {
+        "Time": pd.Timedelta("0 days 00:13:12.826000"),
+        "Status": "1",
+        "Message": "AllClear",
+        "EventName": "Italian Grand Prix",
+        "SessionName": "Race",
+        "SessionDate": pd.Timestamp("2024-09-01 13:00:00"),
+    }
+
+
+@pytest.fixture
+def sample_track_status_data_df():
+    """Sample track status df"""
+
+    return pd.DataFrame(
+        {
+            "Time": [
+                pd.Timedelta("0 days 00:00:00"),
+                pd.Timedelta("0 days 00:26:24.022000"),
+                pd.Timedelta("0 days 00:26:25.760000"),
+                pd.Timedelta("0 days 00:33:06.410000"),
+                pd.Timedelta("0 days 00:37:11.505000"),
+                pd.Timedelta("0 days 00:54:53.237000"),
+                pd.Timedelta("0 days 00:57:52.954000"),
+            ],
+            "Status": ["1", "2", "1", "2", "1", "2", "1"],
+            "Message": [
+                "AllClear",
+                "Yellow",
+                "AllClear",
+                "Yellow",
+                "AllClear",
+                "Yellow",
+                "AllClear",
+            ],
+            "EventName": ["Italian Grand Prix"] * 7,
+            "SessionName": ["Race"] * 7,
+            "SessionDate": [pd.Timestamp("2024-09-01 13:00:00")] * 7,
         }
     )
 
