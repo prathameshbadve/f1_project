@@ -21,7 +21,7 @@ logging.getLogger("faker").setLevel(logging.WARNING)
 
 
 @pytest.mark.unit
-class TestResultSchema:
+class TestRaceResultSchema:
     """Test RaceResultSchema validation"""
 
     def test_valid_race_result(self, sample_race_result):
