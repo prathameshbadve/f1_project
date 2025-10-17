@@ -1,7 +1,9 @@
+boto3==1.40.55
 fastf1==3.6.1
 ipykernel==7.0.0
 ipython_pygments_lexers==1.1.1
 minio==7.2.18
+mlflow==3.5.0
 pandas==2.3.3
 pipdeptree==2.29.0
 psycopg2-binary==2.9.11
