@@ -411,7 +411,7 @@ class MLFlowConfig(Config):
             "MLFLOW_TRACKING_URI", "http://localhost:8080"
         )
         self.experiment_name = experiment_name or os.getenv(
-            "MLFLOW_EXPERIMENT_NAME", "f1-race-prediction-local"
+            "MLFLOW_EXPERIMENT_NAME", "f1-race-prediction-development"
         )
 
     def _load_production_mlflow_config(self, tracking_uri, experiment_name):
