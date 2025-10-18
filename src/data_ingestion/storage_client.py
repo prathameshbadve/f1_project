@@ -13,7 +13,7 @@ from minio import Minio
 from minio.error import S3Error
 
 from config.logging import get_logger
-from config.settings import storage_config
+from config.settings import storage_config, StorageConfig
 
 
 class StorageClient:
@@ -24,8 +24,8 @@ class StorageClient:
     organization by session type.
     """
 
-    def __init__(self):
-        self.config = storage_config
+    def __init__(self, storage_cfg: StorageConfig = None):
+        self.config = storage_cfg or storage_config
         self.logger = get_logger("data_ingestion.storage_client")
 
         # Initialize MinIO client
