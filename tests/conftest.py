@@ -48,7 +48,7 @@ def test_raw_bucket_name():
 def test_processed_bucket_name():
     """Test processed bucket name for MinIO"""
 
-    return "f1-test-processed_data"
+    return "f1-test-processed-data"
 
 
 @pytest.fixture(scope="session")
@@ -116,12 +116,12 @@ def test_race_config():
         "single_session": {
             "year": 2024,
             "event_name": "Italian Grand Prix",
-            "sessions": ["R"],
+            "sessions": "R",
         },
         "full_race_weekend": {
             "year": 2024,
             "event_name": "Italian Grand Prix",
-            "sessions": "all",
+            "sessions": ["all"],
         },
     }
 
@@ -995,15 +995,32 @@ def load_fixture(fixtures_dir):
 # ============================================================================
 
 
-def cleanup_test_bucket(storage_client):
+@pytest.fixture
+def cleanup_test_buckets(test_storage_client):
     """Clean up test bucket after tests"""
 
-    try:
-        objects = storage_client.list_objects(prefix="f1-test")
-        for obj_key in objects:
-            storage_client.delete_object(obj_key)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Warning: Failed to cleanup test bucket: {e}")
+    buckets = test_storage_client.client.list_buckets()
+    for bucket in buckets:
+        # Detect bucket name based on type
+        if isinstance(bucket, dict):
+            bucket_name = bucket.get("Name") or bucket.get("name")
+        else:
+            bucket_name = getattr(bucket, "name", str(bucket))
+
+        # Adjust logic as per your naming convention
+        if bucket_name and bucket_name.startswith("f1-test"):
+            # Delete all objects inside bucket before removing it (safety)
+            try:
+                objects = test_storage_client.list_objects(bucket_name=bucket)
+                for obj_key in objects:
+                    test_storage_client.delete_object(
+                        bucket_name=bucket, object_key=obj_key
+                    )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+
+            # Now delete the bucket itself
+            test_storage_client.client.remove_bucket(bucket_name)
 
 
 @pytest.fixture
@@ -1014,6 +1031,10 @@ def cleanup_test_data(test_storage_client):
     # Cleanup after test
     try:
         objects = test_storage_client.list_objects(prefix="test/")
+        for obj_key in objects:
+            test_storage_client.delete_object(obj_key)
+
+        objects = test_storage_client.list_objects(prefix="2024/")
         for obj_key in objects:
             test_storage_client.delete_object(obj_key)
     except Exception:  # pylint: disable=broad-exception-caught
