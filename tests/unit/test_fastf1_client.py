@@ -23,11 +23,13 @@ class TestFastF1ClientInit:
 
     def test_client_initialization(self, fastf1_client):
         """Test that client initializes correctly"""
+
         assert fastf1_client is not None
         assert fastf1_client.config is not None
 
     def test_client_has_logger(self, fastf1_client):
         """Test that client has logger"""
+
         assert hasattr(fastf1_client, "logger")
         assert fastf1_client.logger is not None
 
@@ -37,17 +39,12 @@ class TestGetSeasonSchedule:
     """Test get_season_schedule method"""
 
     @patch("fastf1.get_event_schedule")
-    def test_get_season_schedule_success(self, mock_get_schedule, fastf1_client):
+    def test_get_season_schedule_success(
+        self, mock_get_schedule, fastf1_client, sample_season_schedule
+    ):
         """Test successful schedule fetch"""
         # Mock schedule data
-        mock_schedule = pd.DataFrame(
-            {
-                "RoundNumber": [1, 2, 3],
-                "EventName": ["Bahrain GP", "Saudi Arabian GP", "Australian GP"],
-                "Country": ["Bahrain", "Saudi Arabia", "Australia"],
-            }
-        )
-        mock_get_schedule.return_value = mock_schedule
+        mock_get_schedule.return_value = sample_season_schedule
 
         # Call method
         schedule = fastf1_client.get_season_schedule(2024)
@@ -78,6 +75,7 @@ class TestGetSession:
         self, mock_get_session, fastf1_client, mock_fastf1_session
     ):
         """Test successful session fetch"""
+
         mock_get_session.return_value = mock_fastf1_session
 
         session = fastf1_client.get_session(2024, "Austrian Grand Prix", "R")
@@ -107,6 +105,7 @@ class TestGetSession:
     @patch("fastf1.get_session")
     def test_get_session_error(self, mock_get_session, fastf1_client):
         """Test session fetch with error"""
+
         mock_get_session.side_effect = Exception("Session not found")
 
         with pytest.raises(Exception):
@@ -120,6 +119,7 @@ class TestCacheOperations:
     @patch("fastf1.Cache.get_cache_info")
     def test_cache_info(self, mock_cache_info, fastf1_client):
         """Test getting cache info"""
+
         mock_cache_info.return_value = ("cache_dir", 12345)
 
         info = fastf1_client.cache_info()
@@ -130,6 +130,7 @@ class TestCacheOperations:
     @patch("fastf1.Cache.clear_cache")
     def test_clear_cache(self, mock_clear_cache, fastf1_client):
         """Test clearing cache"""
+
         fastf1_client.clear_cache(deep=True)
 
         mock_clear_cache.assert_called_once_with(deep=True)
@@ -137,6 +138,7 @@ class TestCacheOperations:
     @patch("fastf1.Cache.clear_cache")
     def test_clear_cache_default(self, mock_clear_cache, fastf1_client):
         """Test clearing cache with default parameters"""
+
         fastf1_client.clear_cache()
 
         mock_clear_cache.assert_called_once_with(deep=False)
@@ -162,38 +164,37 @@ class TestGetMultipleSessions:
         assert "Saudi Arabia" in result
         assert mock_get_session.call_count == 4  # 2 events x 2 sessions
 
-    # @patch.object(FastF1Client, "get_session")
-    # def test_get_multiple_sessions_with_failure(
-    #     self, mock_get_session, fastf1_client, mock_fastf1_session
-    # ):
-    #     """Test fetching multiple sessions with some failures"""
+    @patch.object(FastF1Client, "get_session")
+    def test_get_multiple_sessions_with_failure(
+        self, mock_get_session, fastf1_client, mock_fastf1_session
+    ):
+        """Test fetching multiple sessions with some failures"""
 
-    #     # First call succeeds, second fails
-    #     mock_get_session.side_effect = [
-    #         mock_fastf1_session,
-    #         Exception("Error"),
-    #         mock_fastf1_session,
-    #     ]
+        # First call succeeds, second fails
+        mock_get_session.side_effect = [
+            mock_fastf1_session,
+            Exception("Error"),
+        ]
 
-    #     events = ["Bahrain"]
-    #     sessions = ["Q", "R"]
+        events = ["Bahrain Grand Prix"]
+        sessions = ["Q", "R"]
 
-    #     result = fastf1_client.get_multiple_sessions(2024, events, sessions)
+        result = fastf1_client.get_multiple_sessions(2024, events, sessions)
 
-    #     # Check based on actual return type
-    #     if isinstance(result, dict):
-    #         # Dictionary structure
-    #         assert "Bahrain" in result or "Bahrain Grand Prix" in result
-    #     elif isinstance(result, list):
-    #         # List structure - check if we got at least one session
-    #         assert len(result) >= 1
-    #         # Verify the successful session is present
-    #         assert any(session is not None for session in result)
-    #     else:
-    #         raise AssertionError(f"Unexpected return type: {type(result)}")
+        # Check based on actual return type
+        if isinstance(result, dict):
+            # Dictionary structure
+            assert "Bahrain Grand Prix" in result
+        elif isinstance(result, list):
+            # List structure - check if we got at least one session
+            assert len(result) >= 1
+            # Verify the successful session is present
+            assert any(session is not None for session in result)
+        else:
+            raise AssertionError(f"Unexpected return type: {type(result)}")
 
-    #     # Verify get_session was called twice (once for Q, once for R)
-    #     assert mock_get_session.call_count == 2
+        # Verify get_session was called twice (once for Q, once for R)
+        assert mock_get_session.call_count == 2
 
 
 @pytest.mark.unit
@@ -202,6 +203,7 @@ class TestFastF1ClientConfiguration:
 
     def test_session_types_from_config(self, fastf1_client):
         """Test that session types come from config"""
+
         session_types = fastf1_client.config.session_types
 
         assert isinstance(session_types, list)
@@ -209,6 +211,7 @@ class TestFastF1ClientConfiguration:
 
     def test_cache_dir_from_config(self, fastf1_client):
         """Test that cache directory comes from config"""
+
         cache_dir = fastf1_client.config.cache_dir
 
         assert cache_dir is not None
@@ -250,118 +253,6 @@ class TestFastF1ClientEdgeCases:
 
         with pytest.raises(Exception):
             fastf1_client.get_session(2024, "Italy", "R")
-
-
-# @pytest.mark.unit
-# class TestFastF1ClientLogging:
-#     """Test that client logs appropriately"""
-
-#     @patch("fastf1.get_event_schedule")
-#     def test_logs_schedule_fetch(self, mock_get_schedule, fastf1_client, caplog):
-#         """Test that schedule fetch is logged"""
-
-#         mock_schedule = pd.DataFrame(
-#             {
-#                 "RoundNumber": [0, 1, 2],
-#                 "Country": ["Bahrain", "Bahrain", "Saudi Arabia"],
-#                 "Location": ["Sakhir", "Sakhir", "Jeddah"],
-#                 "OfficialEventName": [
-#                     "FORMULA 1 ARAMCO PRE-SEASON TESTING 2024",
-#                     "FORMULA 1 GULF AIR BAHRAIN GRAND PRIX 2024",
-#                     "FORMULA 1 STC SAUDI ARABIAN GRAND PRIX 2024",
-#                 ],
-#                 "EventDate": [
-#                     pd.Timestamp("2024-02-23 00:00:00"),
-#                     pd.Timestamp("2024-03-02 00:00:00"),
-#                     pd.Timestamp("2024-03-09 00:00:00"),
-#                 ],
-#                 "EventName": [
-#                     "Pre-Season Testing",
-#                     "Bahrain Grand Prix",
-#                     "Saudi Arabian Grand Prix",
-#                 ],
-#                 "EventFormat": ["testing", "conventional", "conventional"],
-#                 "Session1": ["Practice 1", "Practice 1", "Practice 1"],
-#                 "Session1Date": [
-#                     pd.Timestamp("2024-02-21 10:00:00+0300", tz="UTC+03:00"),
-#                     pd.Timestamp("2024-02-29 14:30:00+0300", tz="UTC+03:00"),
-#                     pd.Timestamp("2024-03-07 16:30:00+0300", tz="UTC+03:00"),
-#                 ],
-#                 "Session1DateUtc": [
-#                     pd.Timestamp("2024-02-21 07:00:00"),
-#                     pd.Timestamp("2024-02-29 11:30:00"),
-#                     pd.Timestamp("2024-03-07 13:30:00"),
-#                 ],
-#                 "Session2": ["Practice 2", "Practice 2", "Practice 2"],
-#                 "Session2Date": [
-#                     pd.Timestamp("2024-02-22 10:00:00+0300", tz="UTC+03:00"),
-#                     pd.Timestamp("2024-02-29 18:00:00+0300", tz="UTC+03:00"),
-#                     pd.Timestamp("2024-03-07 20:10:00+0300", tz="UTC+03:00"),
-#                 ],
-#                 "Session2DateUtc": [
-#                     pd.Timestamp("2024-02-22 07:00:00"),
-#                     pd.Timestamp("2024-02-29 15:00:00"),
-#                     pd.Timestamp("2024-03-07 17:10:00"),
-#                 ],
-#                 "Session3": ["Practice 3", "Practice 3", "Practice 3"],
-#                 "Session3Date": [
-#                     pd.Timestamp("2024-02-23 10:00:00+0300", tz="UTC+03:00"),
-#                     pd.Timestamp("2024-03-01 15:30:00+0300", tz="UTC+03:00"),
-#                     pd.Timestamp("2024-03-08 16:30:00+0300", tz="UTC+03:00"),
-#                 ],
-#                 "Session3DateUtc": [
-#                     pd.Timestamp("2024-02-23 07:00:00"),
-#                     pd.Timestamp("2024-03-01 12:30:00"),
-#                     pd.Timestamp("2024-03-08 13:30:00"),
-#                 ],
-#                 "Session4": ["None", "Qualifying", "Qualifying"],
-#                 "Session4Date": [
-#                     None,
-#                     pd.Timestamp("2024-03-01 19:00:00+0300", tz="UTC+03:00"),
-#                     pd.Timestamp("2024-03-08 20:00:00+0300", tz="UTC+03:00"),
-#                 ],
-#                 "Session4DateUtc": [
-#                     None,
-#                     pd.Timestamp("2024-03-01 16:00:00"),
-#                     pd.Timestamp("2024-03-08 17:00:00"),
-#                 ],
-#                 "Session5": ["None", "Race", "Race"],
-#                 "Session5Date": [
-#                     None,
-#                     pd.Timestamp("2024-03-02 18:00:00+0300", tz="UTC+03:00"),
-#                     pd.Timestamp("2024-03-09 20:00:00+0300", tz="UTC+03:00"),
-#                 ],
-#                 "Session5DateUtc": [
-#                     None,
-#                     pd.Timestamp("2024-03-02 15:00:00"),
-#                     pd.Timestamp("2024-03-09 17:00:00"),
-#                 ],
-#                 "F1ApiSupport": [True, True, True],
-#                 "Season": [2024] * 3,
-#             },
-#             index=[0, 1, 2],
-#         )
-#         mock_get_schedule.return_value = mock_schedule
-
-#         with caplog.at_level("INFO"):
-#             fastf1_client.get_season_schedule(2024)
-
-#         # Check that logging occurred
-#         assert any("schedule" in record.message.lower() for record in caplog.records)
-
-#     @patch("fastf1.get_session")
-#     def test_logs_session_fetch(
-#         self, mock_get_session, fastf1_client, mock_fastf1_session, caplog
-#     ):
-#         """Test that session fetch is logged"""
-
-#         mock_get_session.return_value = mock_fastf1_session
-
-#         with caplog.at_level("INFO"):
-#             fastf1_client.get_session(2024, "Italy", "R")
-
-#         # Check that logging occurred
-#         assert any("session" in record.message.lower() for record in caplog.records)
 
 
 @pytest.mark.unit
@@ -489,6 +380,7 @@ class TestFastF1ClientIntegrationPoints:
 
     def test_client_compatible_with_pipeline(self, fastf1_client):
         """Test that client interface is compatible with pipeline"""
+
         # Check that client has all required methods for pipeline
         assert hasattr(fastf1_client, "get_season_schedule")
         assert hasattr(fastf1_client, "get_session")
@@ -497,6 +389,7 @@ class TestFastF1ClientIntegrationPoints:
 
     def test_session_output_compatible_with_validator(self, mock_fastf1_session):
         """Test that session output is compatible with validator"""
+
         # Check that session has expected attributes
         assert hasattr(mock_fastf1_session, "results")
         assert hasattr(mock_fastf1_session, "laps")
