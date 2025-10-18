@@ -1,94 +1,70 @@
 # Dagster instance configuration
-# This file configures storage backends for Dagster metadata and operational settings
-
-# Run storage - stores information about pipeline runs
-run_storage:
-  module: dagster_postgres.run_storage
-  class: PostgresRunStorage
-  config:
-    postgres_url:
-      env: DATABASE_URL
-
-# Event log storage - stores all events that occur during runs
-event_log_storage:
-  module: dagster_postgres.event_log
-  class: PostgresEventLogStorage
-  config:
-    postgres_url:
-      env: DATABASE_URL
-
-# Schedule storage - stores schedule state and ticks
-schedule_storage:
-  module: dagster_postgres.schedule_storage
-  class: PostgresScheduleStorage
-  config:
-    postgres_url:
-      env: DATABASE_URL
-
-# Run coordinator - manages how runs are launched
-run_coordinator:
-  module: dagster.core.run_coordinator
-  class: QueuedRunCoordinator
-  config:
-    # Maximum number of concurrent runs
-    max_concurrent_runs: 10
+# Storage configuration - PostgreSQL for run storage, event logs, and schedules
+storage:
+  postgres:
+    postgres_db:
+      username:
+        env: DAGSTER_POSTGRES_USER
+      password:
+        env: DAGSTER_POSTGRES_PASSWORD
+      hostname:
+        env: DAGSTER_POSTGRES_HOST
+      db_name:
+        env: DAGSTER_POSTGRES_DB
+      port:
+        env: DAGSTER_POSTGRES_PORT
 
 # Run launcher - determines how runs are executed
 run_launcher:
-  module: dagster.core.launcher
+  module: dagster._core.launcher
   class: DefaultRunLauncher
-  config:
-    # Number of workers for run execution
-    num_workers: 4
+
+# Run coordinator - manages run queuing and concurrency
+run_coordinator:
+  module: dagster._core.run_coordinator
+  class: DefaultRunCoordinator
 
 # Compute logs - where to store stdout/stderr from runs
 compute_logs:
-  module: dagster.core.storage.local_compute_log_manager
+  module: dagster._core.storage.local_compute_log_manager
   class: LocalComputeLogManager
   config:
     base_dir: /tmp/dagster/logs
 
-# Telemetry - send anonymous usage statistics to Dagster
+# Run monitoring - optional, monitors run worker health
+run_monitoring:
+  enabled: true
+  start_timeout_seconds: 180
+  max_resume_run_attempts: 3
+
+# Telemetry - set to false to disable telemetry
 telemetry:
   enabled: false
 
-# Run monitoring - monitor run workers and restart if needed
-run_monitoring:
-  enabled: true
-  # Maximum number of times to resume a run
-  max_resume_run_attempts: 3
-  # How often to poll for run status
-  poll_interval_seconds: 120
-  # Maximum time to wait for a run worker to start
-  start_timeout_seconds: 180
-
-# Run retries - automatic retry configuration
-run_retries:
-  enabled: true
-  max_retries: 3
-
-# Sensor evaluation - how often sensors are evaluated
-sensors:
-  # Minimum interval between sensor evaluations (global setting)
-  minimum_interval_seconds: 30
-  # Number of worker threads for sensor evaluation
-  num_workers: 4
-
-# Code servers - settings for user code servers
+# Code server configuration
 code_servers:
-  # Timeout for loading user code
   local_startup_timeout: 180
-  # How often to reload code locations
-  reload_interval: 60
+  reload_timeout: 60
 
-# Retention policy - how long to keep old data
+# Data retention policies
 retention:
   schedule:
-    # Keep schedule tick history for 30 days
-    purge_after_days: 30
+    purge_after_days:
+      skipped: 7
+      failure: 30
+      success: 7
   sensor:
-    # Keep sensor tick history for 30 days
-    purge_after_days: 30
-  run:
-    # Keep run history for 90 days
-    purge_after_days: 90
+    purge_after_days:
+      skipped: 7
+      failure: 30
+      success: 7
+  auto_materialize:
+    purge_after_days:
+      skipped: 7
+      failure: 30
+      success: 7
+
+# Sensor configuration
+sensors:
+  use_threads: true
+  num_workers: 4
