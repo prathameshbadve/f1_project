@@ -38,14 +38,21 @@ setup_logging()
 
 
 @pytest.fixture(scope="session")
-def test_bucket_name():
-    """Test bucket name for MinIO"""
+def test_raw_bucket_name():
+    """Test raw bucket name for MinIO"""
 
-    return "f1-test-data"
+    return "f1-test-raw-data"
 
 
 @pytest.fixture(scope="session")
-def test_storage_config(test_bucket_name):  # pylint: disable=redefined-outer-name
+def test_processed_bucket_name():
+    """Test processed bucket name for MinIO"""
+
+    return "f1-test-processed_data"
+
+
+@pytest.fixture(scope="session")
+def test_storage_config(test_raw_bucket_name, test_processed_bucket_name):
     """Storage configuration for tests"""
 
     return StorageConfig(
@@ -53,26 +60,27 @@ def test_storage_config(test_bucket_name):  # pylint: disable=redefined-outer-na
         access_key=os.getenv("MINIO_ACCESS_KEY", "minioadmin"),
         secret_key=os.getenv("MINIO_SECRET_KEY", "minioadmin"),
         secure=False,
-        raw_bucket_name=test_bucket_name,
-        processed_bucket_name=f"{test_bucket_name}-processed",
+        raw_bucket_name=test_raw_bucket_name,
+        processed_bucket_name=test_processed_bucket_name,
     )
 
 
 @pytest.fixture(scope="session")
-def test_storage_client(test_storage_config):  # pylint: disable=redefined-outer-name
+def test_storage_client(test_storage_config):
     """Storage client configured for test bucket"""
 
-    client = StorageClient()
+    client = StorageClient(test_storage_config)
 
-    # Override bucket name for tests
-    client.config.raw_bucket_name = test_storage_config.raw_bucket_name
-
-    # Ensure test bucket exists
+    # Ensure test buckets exists
     try:
         if not client.client.bucket_exists(test_storage_config.raw_bucket_name):
             client.client.make_bucket(test_storage_config.raw_bucket_name)
+
+        if not client.client.bucket_exists(test_storage_config.processed_bucket_name):
+            client.client.make_bucket(test_storage_config.processed_bucket_name)
+
     except Exception as e:  # pylint: disable=broad-except
-        pytest.fail(f"Failed to create test bucket: {e}")
+        pytest.fail(f"Failed to create test buckest: {e}")
 
     yield client
 
@@ -104,16 +112,111 @@ def data_validator():
 def test_race_config():
     """Configuration for test race (2024 Italian Grand Prix)"""
 
-    return {
-        "year": 2024,
-        "event_name": "Italian Grand Prix",
-        "sessions": ["Q", "R"],
+    test_race_configs = {
+        "single_session": {
+            "year": 2024,
+            "event_name": "Italian Grand Prix",
+            "sessions": ["R"],
+        },
+        "full_race_weekend": {
+            "year": 2024,
+            "event_name": "Italian Grand Prix",
+            "sessions": "all",
+        },
     }
+
+    return test_race_configs
 
 
 # ============================================================================
 # Sample data fixtures (function-scoped, created per test)
 # ============================================================================
+
+
+@pytest.fixture
+def sample_season_schedule():
+    """Sample season schedule dataframe"""
+
+    return pd.DataFrame(
+        {
+            "RoundNumber": [2, 3, 4],
+            "Country": ["Saudi Arabia", "Australia", "Japan"],
+            "Location": ["Jeddah", "Melbourne", "Suzuka"],
+            "OfficialEventName": [
+                "FORMULA 1 STC SAUDI ARABIAN GRAND PRIX 2024",
+                "FORMULA 1 ROLEX AUSTRALIAN GRAND PRIX 2024",
+                "FORMULA 1 MSC CRUISES JAPANESE GRAND PRIX 2024",
+            ],
+            "EventDate": [
+                pd.Timestamp("2024-03-09 00:00:00"),
+                pd.Timestamp("2024-03-24 00:00:00"),
+                pd.Timestamp("2024-04-07 00:00:00"),
+            ],
+            "EventName": [
+                "Saudi Arabian Grand Prix",
+                "Australian Grand Prix",
+                "Japanese Grand Prix",
+            ],
+            "EventFormat": ["conventional", "conventional", "conventional"],
+            "Session1": ["Practice 1", "Practice 1", "Practice 1"],
+            "Session1Date": [
+                pd.Timestamp("2024-03-07 16:30:00+0300", tz="UTC+03:00"),
+                pd.Timestamp("2024-03-22 12:30:00+1100", tz="UTC+11:00"),
+                pd.Timestamp("2024-04-05 11:30:00+0900", tz="UTC+09:00"),
+            ],
+            "Session1DateUtc": [
+                pd.Timestamp("2024-03-07 13:30:00"),
+                pd.Timestamp("2024-03-22 01:30:00"),
+                pd.Timestamp("2024-04-05 02:30:00"),
+            ],
+            "Session2": ["Practice 2", "Practice 2", "Practice 2"],
+            "Session2Date": [
+                pd.Timestamp("2024-03-07 20:10:00+0300", tz="UTC+03:00"),
+                pd.Timestamp("2024-03-22 16:00:00+1100", tz="UTC+11:00"),
+                pd.Timestamp("2024-04-05 15:00:00+0900", tz="UTC+09:00"),
+            ],
+            "Session2DateUtc": [
+                pd.Timestamp("2024-03-07 17:10:00"),
+                pd.Timestamp("2024-03-22 05:00:00"),
+                pd.Timestamp("2024-04-05 06:00:00"),
+            ],
+            "Session3": ["Practice 3", "Practice 3", "Practice 3"],
+            "Session3Date": [
+                pd.Timestamp("2024-03-08 16:30:00+0300", tz="UTC+03:00"),
+                pd.Timestamp("2024-03-23 12:30:00+1100", tz="UTC+11:00"),
+                pd.Timestamp("2024-04-06 11:30:00+0900", tz="UTC+09:00"),
+            ],
+            "Session3DateUtc": [
+                pd.Timestamp("2024-03-08 13:30:00"),
+                pd.Timestamp("2024-03-23 01:30:00"),
+                pd.Timestamp("2024-04-06 02:30:00"),
+            ],
+            "Session4": ["Qualifying", "Qualifying", "Qualifying"],
+            "Session4Date": [
+                pd.Timestamp("2024-03-08 20:00:00+0300", tz="UTC+03:00"),
+                pd.Timestamp("2024-03-23 16:00:00+1100", tz="UTC+11:00"),
+                pd.Timestamp("2024-04-06 15:00:00+0900", tz="UTC+09:00"),
+            ],
+            "Session4DateUtc": [
+                pd.Timestamp("2024-03-08 17:00:00"),
+                pd.Timestamp("2024-03-23 05:00:00"),
+                pd.Timestamp("2024-04-06 06:00:00"),
+            ],
+            "Session5": ["Race", "Race", "Race"],
+            "Session5Date": [
+                pd.Timestamp("2024-03-09 20:00:00+0300", tz="UTC+03:00"),
+                pd.Timestamp("2024-03-24 15:00:00+1100", tz="UTC+11:00"),
+                pd.Timestamp("2024-04-07 14:00:00+0900", tz="UTC+09:00"),
+            ],
+            "Session5DateUtc": [
+                pd.Timestamp("2024-03-09 17:00:00"),
+                pd.Timestamp("2024-03-24 04:00:00"),
+                pd.Timestamp("2024-04-07 05:00:00"),
+            ],
+            "F1ApiSupport": [True, True, True],
+            "Season": [2024, 2024, 2024],
+        }
+    )
 
 
 @pytest.fixture
@@ -251,11 +354,11 @@ def sample_qualifying_results_data_df():
                 "George Russell",
             ],
             "HeadshotUrl": [
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/C/CHALEC01_Charles_Leclerc/chalec01.png.transform/1col/image.png",
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/O/OSCPIA01_Oscar_Piastri/oscpia01.png.transform/1col/image.png",
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/C/CARSAI01_Carlos_Sainz/carsai01.png.transform/1col/image.png",
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LANNOR01_Lando_Norris/lannor01.png.transform/1col/image.png",
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/G/GEORUS01_George_Russell/georus01.png.transform/1col/image.png",
+                "www.google.com",
+                "www.google.com",
+                "www.google.com",
+                "www.google.com",
+                "www.google.com",
             ],
             "CountryCode": ["MON", "AUS", "ESP", "GBR", "GBR"],
             "Position": [1.0, 2.0, 3.0, 4.0, 5.0],
@@ -322,11 +425,11 @@ def sample_practice_results_data_df():
                 "Pierre Gasly",
             ],
             "HeadshotUrl": [
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/M/MAXVER01_Max_Verstappen/maxver01.png.transform/1col/image.png",
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LOGSAR01_Logan_Sargeant/logsar01.png.transform/1col/image.png",
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/D/DANRIC01_Daniel_Ricciardo/danric01.png.transform/1col/image.png",
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LANNOR01_Lando_Norris/lannor01.png.transform/1col/image.png",
-                "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/P/PIEGAS01_Pierre_Gasly/piegas01.png.transform/1col/image.png",
+                "www.google.com",
+                "www.google.com",
+                "www.google.com",
+                "www.google.com",
+                "www.google.com",
             ],
             "CountryCode": ["NED", "USA", "AUS", "GBR", "FRA"],
             "Position": [None, None, None, None, None],
@@ -825,7 +928,7 @@ def mock_empty_fastf1_session():
         "RoundNumber": 99,
         "Country": "Test",
     }
-    session.name = "R"
+    session.name = "Race"
     session.results = None
     session.laps = None
     session.weather_data = None
@@ -896,7 +999,7 @@ def cleanup_test_bucket(storage_client):
     """Clean up test bucket after tests"""
 
     try:
-        objects = storage_client.list_objects(prefix="")
+        objects = storage_client.list_objects(prefix="f1-test")
         for obj_key in objects:
             storage_client.delete_object(obj_key)
     except Exception as e:  # pylint: disable=broad-exception-caught
