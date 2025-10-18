@@ -104,7 +104,7 @@ class FastF1Client:
                     self.logger.warning(
                         "Could not load %d %s %s: %s", year, event, session, e
                     )
-                    sessions[event][session] = None
+                    session_objs[event][session] = None
 
         return session_objs
 
