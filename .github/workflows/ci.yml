@@ -1,0 +1,265 @@
+name: CI - Tests and Code Quality
+
+on:
+    push:
+        branches: [main, dev]
+    pull_request:
+        branches: [main, dev]
+    workflow_dispatch: # Allow manual trigger
+
+env:
+    PYTHON_VERSION: "3.11.4"
+
+jobs:
+    # Job 1: Code Quality Checks
+    code-quality:
+        name: Code Quality (Linting & Formatting)
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+                  cache: "pip"
+
+            - name: Install dependencies
+              run: |
+                  pip install --upgrade pip
+                  pip install -r requirements/test.txt
+
+            - name: Check code formatting with Black
+              run: |
+                  black --check src/ tests/
+
+            - name: Lint with Ruff
+              run: |
+                  ruff check src/ tests/
+
+            - name: Type check with MyPy
+              run: |
+                  mypy src/ --ignore-missing-imports
+              continue-on-error: true # Don't fail on type errors yet
+
+            - name: Lint with Pylint
+              run: |
+                  pylint src/ --disable=C0114,C0115,C0116,R0913,R0914
+              continue-on-error: true # Don't fail on pylint warnings yet
+
+    # Job 2: Unit Tests
+    unit-tests:
+        name: Unit Tests
+        runs-on: ubuntu-latest
+        needs: code-quality
+
+        services:
+            minio:
+                image: minio/minio:latest
+                ports:
+                    - 9000:9000
+                    - 9001:9001
+                env:
+                    MINIO_ROOT_USER: minioadmin
+                    MINIO_ROOT_PASSWORD: minioadmin
+                options: >-
+                    --health-cmd "curl -f http://localhost:9000/minio/health/live"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+            postgres:
+                image: postgres:16-alpine
+                ports:
+                    - 5432:5432
+                env:
+                    POSTGRES_USER: f1user
+                    POSTGRES_PASSWORD: f1pass
+                    POSTGRES_DB: f1_data
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+                  cache: "pip"
+
+            - name: Install dependencies
+              run: |
+                  pip install --upgrade pip
+                  pip install -r requirements/test.txt
+
+            - name: Create test bucket in MinIO
+              run: |
+                  pip install minio
+                  python -c "
+                  from minio import Minio
+                  client = Minio('localhost:9000', access_key='minioadmin', secret_key='minioadmin', secure=False)
+                  if not client.bucket_exists('f1-test-data'):
+                      client.make_bucket('f1-test-data')
+                      print('Created test bucket')
+                  "
+
+            - name: Run unit tests with coverage
+              env:
+                  MINIO_ENDPOINT: localhost:9000
+                  MINIO_ACCESS_KEY: minioadmin
+                  MINIO_SECRET_KEY: minioadmin
+                  MINIO_BUCKET_RAW: f1-test-data
+                  MINIO_SECURE: false
+                  DB_HOST: localhost
+                  DB_PORT: 5432
+                  DB_NAME: f1_data
+                  DB_USER: f1user
+                  DB_PASSWORD: f1pass
+                  ENVIRONMENT: testing
+              run: |
+                  pytest tests/unit/ -v \
+                    --cov=src \
+                    --cov-report=xml \
+                    --cov-report=term \
+                    --cov-report=html \
+                    -m "unit and not slow"
+
+            - name: Upload coverage to Codecov
+              uses: codecov/codecov-action@v3
+              with:
+                  files: ./coverage.xml
+                  flags: unittests
+                  name: codecov-unit
+                  fail_ci_if_error: false
+
+            - name: Upload coverage report
+              uses: actions/upload-artifact@v3
+              with:
+                  name: coverage-report-unit
+                  path: htmlcov/
+                  retention-days: 7
+
+    # Job 3: Integration Tests (only on main branch or manual trigger)
+    integration-tests:
+        name: Integration Tests
+        runs-on: ubuntu-latest
+        needs: unit-tests
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+        services:
+            minio:
+                image: minio/minio:latest
+                ports:
+                    - 9000:9000
+                    - 9001:9001
+                env:
+                    MINIO_ROOT_USER: minioadmin
+                    MINIO_ROOT_PASSWORD: minioadmin
+                options: >-
+                    --health-cmd "curl -f http://localhost:9000/minio/health/live"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+            postgres:
+                image: postgres:15-alpine
+                ports:
+                    - 5432:5432
+                env:
+                    POSTGRES_USER: f1user
+                    POSTGRES_PASSWORD: f1pass
+                    POSTGRES_DB: f1_data
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+                  cache: "pip"
+
+            - name: Install dependencies
+              run: |
+                  pip install --upgrade pip
+                  pip install -r requirements/test.txt
+
+            - name: Create test bucket in MinIO
+              run: |
+                  pip install minio
+                  python -c "
+                  from minio import Minio
+                  client = Minio('localhost:9000', access_key='minioadmin', secret_key='minioadmin', secure=False)
+                  if not client.bucket_exists('f1-test-data'):
+                      client.make_bucket('f1-test-data')
+                  "
+
+            - name: Run integration tests
+              env:
+                  MINIO_ENDPOINT: localhost:9000
+                  MINIO_ACCESS_KEY: minioadmin
+                  MINIO_SECRET_KEY: minioadmin
+                  MINIO_BUCKET_RAW: f1-test-data
+                  MINIO_SECURE: false
+                  DB_HOST: localhost
+                  DB_PORT: 5432
+                  DB_NAME: f1_data
+                  DB_USER: f1user
+                  DB_PASSWORD: f1pass
+                  ENVIRONMENT: testing
+                  FASTF1_CACHE_DIR: /tmp/fastf1_cache
+              run: |
+                  pytest tests/integration/ -v \
+                    --cov=src \
+                    --cov-report=xml \
+                    --cov-report=term \
+                    -m "integration and not slow" \
+                    --timeout=300
+
+            - name: Upload coverage to Codecov
+              uses: codecov/codecov-action@v3
+              with:
+                  files: ./coverage.xml
+                  flags: integrationtests
+                  name: codecov-integration
+                  fail_ci_if_error: false
+
+    # Job 4: Test Summary
+    test-summary:
+        name: Test Summary
+        runs-on: ubuntu-latest
+        needs: [code-quality, unit-tests, integration-tests]
+        if: always()
+
+        steps:
+            - name: Check test results
+              run: |
+                  if [ "${{ needs.unit-tests.result }}" == "failure" ]; then
+                    echo "❌ Unit tests failed"
+                    exit 1
+                  elif [ "${{ needs.unit-tests.result }}" == "success" ]; then
+                    echo "✅ All tests passed"
+                  fi
+
+            - name: Post summary
+              run: |
+                  echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "- Code Quality: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+                  if [ "${{ needs.integration-tests.result }}" != "skipped" ]; then
+                    echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+                  fi
