@@ -813,7 +813,7 @@ class SessionLoader:
 
             if session_types is None:
                 session_types = self.config.session_types
-            elif session_types == "all":
+            elif session_types == ["all"]:
                 session_types = self.schedule_loader.get_sessions_to_load(year, event)
 
             for session_type in session_types:
