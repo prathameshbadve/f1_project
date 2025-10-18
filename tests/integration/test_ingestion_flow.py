@@ -5,10 +5,13 @@ Tests with real FastF1 API using 2024 Italian Grand Prix.
 Requires internet connection and Docker/MinIO running.
 """
 
+# pylint: disable=broad-except, unused-argument, unused-variable
+
 import time
 import logging
 
 import pytest
+import pandas as pd
 
 from src.data_ingestion.fastf1_client import FastF1Client
 from src.data_ingestion.storage_client import StorageClient
@@ -16,6 +19,8 @@ from src.data_ingestion.schemas import validate_session_data, DataValidator
 from src.data_ingestion.data_ingestion_pipeline import IngestionPipeline
 
 logging.getLogger("faker").setLevel(logging.WARNING)
+logging.getLogger("requests_cache").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 @pytest.mark.integration
@@ -35,7 +40,9 @@ class TestFastF1ToStorage:
 
         # Fetch session
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event_name"], "R"
+            test_race_config["single_session"]["year"],
+            test_race_config["single_session"]["event_name"],
+            test_race_config["single_session"]["sessions"],
         )
 
         assert session is not None
@@ -43,16 +50,15 @@ class TestFastF1ToStorage:
 
         # Extract results
         results = session.results.copy()
-        results["Year"] = session.event["EventDate"].year
-        results["RoundNumber"] = session.event["RoundNumber"]
+        results["SessionName"] = session.name
         results["EventName"] = session.event["EventName"]
-        results["SessionType"] = "R"
+        results["SessionType"] = "Race"
 
         # Store in MinIO
         object_key = test_storage_client.build_object_key(
-            year=test_race_config["year"],
-            event_name=session.event["EventName"],
-            session_type="R",
+            year=test_race_config["single_session"]["year"],
+            event_name=test_race_config["single_session"]["event_name"],
+            session_type=test_race_config["single_session"]["sessions"],
             data_type="results",
         )
 
@@ -76,7 +82,9 @@ class TestFastF1ToStorage:
         """Test fetching qualifying results and storing"""
         # Fetch session
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event_name"], "Q"
+            test_race_config["single_session"]["year"],
+            test_race_config["single_session"]["event_name"],
+            "Q",
         )
 
         assert session is not None
@@ -84,12 +92,17 @@ class TestFastF1ToStorage:
 
         # Extract and store
         results = session.results.copy()
-        results["Year"] = session.event["EventDate"].year
-        results["RoundNumber"] = session.event["RoundNumber"]
-        results["EventName"] = session.event["EventName"]
-        results["SessionType"] = "Q"
 
-        object_key = f"test/{test_race_config['year']}/italy/Q/results.parquet"
+        results["SessionName"] = session.name
+        results["EventName"] = session.event["EventName"]
+        results["SessionType"] = "Qualifying"
+
+        object_key = test_storage_client.build_object_key(
+            year=test_race_config["single_session"]["year"],
+            event_name=test_race_config["single_session"]["event_name"],
+            session_type="Q",
+            data_type="results",
+        )
         success = test_storage_client.upload_dataframe(results, object_key)
 
         assert success is True
@@ -112,15 +125,20 @@ class TestFastF1ToValidationToStorage:
         """Test fetching, validating, and storing race data"""
         # Fetch session
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event_name"], "R"
+            test_race_config["single_session"]["year"],
+            test_race_config["single_session"]["event_name"],
+            test_race_config["single_session"]["sessions"],
         )
 
-        # Extract data
+        # Extract results
         results = session.results.copy()
-        results["Year"] = session.event["EventDate"].year
-        results["RoundNumber"] = session.event["RoundNumber"]
+        results["SessionName"] = session.name
         results["EventName"] = session.event["EventName"]
-        results["SessionType"] = "R"
+        results["SessionDate"] = session.event["EventDate"]
+
+        timedelta_cols = ["Time", "Q1", "Q2", "Q3"]
+        for col in timedelta_cols:
+            results[col] = results[col].replace({pd.NaT: None})
 
         # Validate
         valid_results, errors = data_validator.validate_results(results)
@@ -130,8 +148,12 @@ class TestFastF1ToValidationToStorage:
         assert len(valid_results) >= len(results) * 0.8  # At least 80% valid
 
         # Store validated data
-        object_key = (
-            f"test/{test_race_config['year']}/italy/R/validated_results.parquet"
+        # Store in MinIO
+        object_key = test_storage_client.build_object_key(
+            year=test_race_config["single_session"]["year"],
+            event_name=test_race_config["single_session"]["event_name"],
+            session_type=test_race_config["single_session"]["sessions"],
+            data_type="results",
         )
         success = test_storage_client.upload_dataframe(valid_results, object_key)
 
@@ -147,14 +169,19 @@ class TestFastF1ToValidationToStorage:
         """Test that validation filters out invalid rows"""
         # Fetch real data
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event_name"], "R"
+            test_race_config["single_session"]["year"],
+            test_race_config["single_session"]["event_name"],
+            test_race_config["single_session"]["sessions"],
         )
 
         results = session.results.copy()
-        results["Year"] = session.event["EventDate"].year
-        results["RoundNumber"] = session.event["RoundNumber"]
+        results["SessionName"] = session.name
         results["EventName"] = session.event["EventName"]
-        results["SessionType"] = "R"
+        results["SessionDate"] = session.event["EventDate"]
+
+        timedelta_cols = ["Time", "Q1", "Q2", "Q3"]
+        for col in timedelta_cols:
+            results[col] = results[col].replace({pd.NaT: None})
 
         original_length = len(results)
 
@@ -189,7 +216,9 @@ class TestCompleteRaceWeekend:
         for session_type in ["Q", "R"]:
             # Fetch
             session = fastf1_client.get_session(
-                test_race_config["year"], test_race_config["event_name"], session_type
+                test_race_config["single_session"]["year"],
+                test_race_config["single_session"]["event_name"],
+                session_type,
             )
 
             if session is None:
@@ -200,27 +229,82 @@ class TestCompleteRaceWeekend:
 
             if session.results is not None:
                 results = session.results.copy()
-                results["Year"] = session.event["EventDate"].year
-                results["RoundNumber"] = session.event["RoundNumber"]
+
+                results["SessionName"] = session.name
                 results["EventName"] = session.event["EventName"]
-                results["SessionType"] = session_type
+                results["SessionDate"] = session.event["EventDate"]
+
+                timedelta_cols = ["Time", "Q1", "Q2", "Q3"]
+                for col in timedelta_cols:
+                    results[col] = results[col].replace({pd.NaT: None})
+
                 session_data["results"] = results
 
             if hasattr(session, "laps") and session.laps is not None:
                 laps = session.laps.copy()
-                laps["Year"] = session.event["EventDate"].year
-                laps["RoundNumber"] = session.event["RoundNumber"]
+
+                laps["SessionName"] = session.name
                 laps["EventName"] = session.event["EventName"]
-                laps["SessionType"] = session_type
+                laps["SessionDate"] = session.event["EventDate"]
+
+                timedelta_cols = [
+                    "Time",
+                    "LapTime",
+                    "PitOutTime",
+                    "PitInTime",
+                    "Sector1Time",
+                    "Sector2Time",
+                    "Sector3Time",
+                    "Sector1SessionTime",
+                    "Sector2SessionTime",
+                    "Sector3SessionTime",
+                    "LapStartTime",
+                    "LapStartDate",
+                ]
+
+                for col in timedelta_cols:
+                    laps[col] = laps[col].replace({pd.NaT: None})
+
                 session_data["laps"] = laps
 
             if hasattr(session, "weather_data") and session.weather_data is not None:
                 weather = session.weather_data.copy()
-                weather["Year"] = session.event["EventDate"].year
-                weather["RoundNumber"] = session.event["RoundNumber"]
+
+                weather["SessionName"] = session.name
                 weather["EventName"] = session.event["EventName"]
-                weather["SessionType"] = session_type
+                weather["SessionDate"] = session.event["EventDate"]
+
                 session_data["weather"] = weather
+
+            if hasattr(session, "weather_data") and session.weather_data is not None:
+                weather = session.weather_data.copy()
+
+                weather["SessionName"] = session.name
+                weather["EventName"] = session.event["EventName"]
+                weather["SessionDate"] = session.event["EventDate"]
+
+                session_data["weather"] = weather
+
+            if (
+                hasattr(session, "session_status")
+                and session.session_status is not None
+            ):
+                session_status = session.session_status.copy()
+
+                session_status["SessionName"] = session.name
+                session_status["EventName"] = session.event["EventName"]
+                session_status["SessionDate"] = session.event["EventDate"]
+
+                session_data["session_status"] = session_status
+
+            if hasattr(session, "track_status") and session.track_status is not None:
+                track_status = session.track_status.copy()
+
+                track_status["SessionName"] = session.name
+                track_status["EventName"] = session.event["EventName"]
+                track_status["SessionDate"] = session.event["EventDate"]
+
+                session_data["track_status"] = track_status
 
             # Validate
             validated = validate_session_data(session_data)
@@ -228,7 +312,13 @@ class TestCompleteRaceWeekend:
             # Store
             for data_type, (valid_df, errors) in validated.items():
                 if not valid_df.empty:
-                    object_key = f"test/{test_race_config['year']}/italy/{session_type}/{data_type}.parquet"
+                    object_key = test_storage_client.build_object_key(
+                        year=test_race_config["single_session"]["year"],
+                        event_name=test_race_config["single_session"]["event_name"],
+                        session_type=session_type,
+                        data_type=data_type,
+                    )
+
                     test_storage_client.upload_dataframe(valid_df, object_key)
 
             sessions_ingested.append(session_type)
@@ -259,12 +349,12 @@ class TestPipelineIntegration:
         )
 
         # Override storage client to use test bucket
-        pipeline.storage_client.config.raw_bucket_name = "f1-test-data"
+        pipeline.storage_client.config.raw_bucket_name = "f1-test-raw-data"
 
         result = pipeline.ingest_session(
-            year=test_race_config["year"],
-            event=test_race_config["event_name"],
-            session_type="R",
+            test_race_config["single_session"]["year"],
+            test_race_config["single_session"]["event_name"],
+            test_race_config["single_session"]["sessions"],
         )
 
         assert result.success is True
@@ -285,11 +375,11 @@ class TestPipelineIntegration:
         )
 
         # Override storage client
-        pipeline.storage_client.config.raw_bucket_name = "f1-test-data"
+        pipeline.storage_client.config.raw_bucket_name = "f1-test-raw-data"
 
         results = pipeline.ingest_race_weekend(
-            year=test_race_config["year"],
-            event=test_race_config["event_name"],
+            year=test_race_config["single_session"]["year"],
+            event=test_race_config["single_session"]["event_name"],
             session_types=["Q", "R"],
         )
 
@@ -306,16 +396,17 @@ class TestPipelineIntegration:
 class TestErrorRecovery:
     """Test error handling and recovery"""
 
-    def test_handle_missing_session(self, fastf1_client, skip_if_no_internet):
-        """Test handling non-existent session"""
-        # Try to fetch a session that doesn't exist
-        try:
-            session = fastf1_client.get_session(2024, "NonExistentRace", "R")
-            # If we get here without exception, session should be None or empty
-            assert session is None or not hasattr(session, "results")
-        except Exception as e:
-            # Expected behavior - exception raised
-            assert "NonExistentRace" in str(e) or "not found" in str(e).lower()
+    # need to change to using session_data_loader and then test invalid session handling
+    # def test_handle_missing_session(self, fastf1_client, skip_if_no_internet):
+    #     """Test handling non-existent session"""
+    #     # Try to fetch a session that doesn't exist
+    #     try:
+    #         session = fastf1_client.get_session(2024, "NonExistentRace", "R")
+    #         # If we get here without exception, session should be None or empty
+    #         assert session is None or not hasattr(session, "results")
+    #     except Exception as e:
+    #         # Expected behavior - exception raised
+    #         assert "NonExistentRace" in str(e) or "not found" in str(e).lower()
 
     def test_handle_network_interruption(
         self, test_storage_client, sample_race_results_df, cleanup_test_data
@@ -352,21 +443,25 @@ class TestDataConsistency:
         """Test that data remains consistent after upload/download"""
         # Fetch
         session = fastf1_client.get_session(
-            test_race_config["year"], test_race_config["event_name"], "R"
+            test_race_config["single_session"]["year"],
+            test_race_config["single_session"]["event_name"],
+            test_race_config["single_session"]["sessions"],
         )
 
         results = session.results.copy()
-        original_length = len(results)
-        original_columns = list(results.columns)
 
         # Add metadata
-        results["Year"] = session.event["EventDate"].year
-        results["RoundNumber"] = session.event["RoundNumber"]
+        results["SessionName"] = session.name
         results["EventName"] = session.event["EventName"]
-        results["SessionType"] = "R"
+        results["SessionDate"] = session.event["EventDate"]
 
         # Store
-        object_key = f"test/{test_race_config['year']}/italy/R/consistency_test.parquet"
+        object_key = test_storage_client.build_object_key(
+            year=test_race_config["single_session"]["year"],
+            event_name=test_race_config["single_session"]["event_name"],
+            session_type="R",
+            data_type="results",
+        )
         test_storage_client.upload_dataframe(results, object_key)
 
         # Download
@@ -377,8 +472,11 @@ class TestDataConsistency:
         assert set(downloaded.columns) == set(results.columns)
 
         # Check a few key values
-        assert downloaded["Year"].iloc[0] == test_race_config["year"]
-        assert downloaded["SessionType"].iloc[0] == "R"
+        assert downloaded["SessionName"].iloc[0] == "Race"
+        assert (
+            downloaded["EventName"].iloc[0]
+            == test_race_config["single_session"]["event_name"]
+        )
 
 
 @pytest.mark.integration
@@ -390,7 +488,6 @@ class TestPerformance:
         self, test_race_config, skip_if_no_internet, skip_if_no_docker
     ):
         """Test that ingestion completes in reasonable time"""
-        import time
 
         pipeline = IngestionPipeline(
             skip_existing=False, validate_data=True, delay_between_sessions=2
@@ -402,9 +499,9 @@ class TestPerformance:
         start = time.time()
 
         result = pipeline.ingest_session(
-            year=test_race_config["year"],
-            event=test_race_config["event_name"],
-            session_type="R",
+            test_race_config["single_session"]["year"],
+            test_race_config["single_session"]["event_name"],
+            test_race_config["single_session"]["sessions"],
         )
 
         duration = time.time() - start
@@ -416,7 +513,7 @@ class TestPerformance:
 
 @pytest.mark.integration
 def test_end_to_end_smoke_test(
-    test_race_config, skip_if_no_internet, skip_if_no_docker
+    test_race_config, test_storage_client, skip_if_no_internet, skip_if_no_docker
 ):
     """Smoke test - basic end-to-end ingestion"""
     # Initialize all components
@@ -427,24 +524,34 @@ def test_end_to_end_smoke_test(
 
     # Fetch
     session = fastf1_client.get_session(
-        test_race_config["year"], test_race_config["event_name"], "R"
+        test_race_config["single_session"]["year"],
+        test_race_config["single_session"]["event_name"],
+        test_race_config["single_session"]["sessions"],
     )
 
     assert session is not None
 
     # Extract
     results = session.results.copy()
-    results["Year"] = session.event["EventDate"].year
-    results["RoundNumber"] = session.event["RoundNumber"]
+    results["SessionName"] = session.name
     results["EventName"] = session.event["EventName"]
-    results["SessionType"] = "R"
+    results["SessionDate"] = session.event["EventDate"]
+
+    timedelta_cols = ["Time", "Q1", "Q2", "Q3"]
+    for col in timedelta_cols:
+        results[col] = results[col].replace({pd.NaT: None})
 
     # Validate
     valid_results, errors = validator.validate_results(results)
     assert len(valid_results) > 0
 
     # Store
-    object_key = f"test/smoke_test/{test_race_config['year']}/results.parquet"
+    object_key = test_storage_client.build_object_key(
+        year=test_race_config["single_session"]["year"],
+        event_name=test_race_config["single_session"]["event_name"],
+        session_type=test_race_config["single_session"]["sessions"],
+        data_type="results",
+    )
     success = storage_client.upload_dataframe(valid_results, object_key)
     assert success is True
 
