@@ -11,6 +11,7 @@ from config.settings import fastf1_config, storage_config
 from config.logging import get_logger
 
 from src.data_ingestion.fastf1_client import FastF1Client
+from src.data_ingestion.schedule_loader import ScheduleLoader
 from src.data_ingestion.storage_client import StorageClient
 
 
@@ -23,10 +24,10 @@ class SessionLoader:
         storage_client: Optional[StorageClient] = None,
     ):
         self.client = client or FastF1Client()
+        self.schedule_loader = ScheduleLoader()
         self.storage_client = storage_client or StorageClient()
         self.config = fastf1_config
         self.storage_config = storage_config
-        self.file_name = "schedule"
         self.logger = get_logger("data_ingestion.session_loader")
 
         self.file_formats = {
@@ -797,9 +798,6 @@ class SessionLoader:
     ) -> Dict[str, Dict[str, Any]]:
         """Load multiple sessions efficiently"""
 
-        if session_types is None:
-            session_types = self.config.session_types
-
         self.logger.info(
             "Loading multiple sessions: %d, %d events, %d session types",
             year,
@@ -812,6 +810,11 @@ class SessionLoader:
         for event in events:
             self.logger.info("Processing event: %s", event)
             all_data[event] = {}
+
+            if session_types is None:
+                session_types = self.config.session_types
+            elif session_types == "all":
+                session_types = self.schedule_loader.get_sessions_to_load(year, event)
 
             for session_type in session_types:
                 try:
