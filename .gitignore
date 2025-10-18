@@ -206,6 +206,15 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
 # FastF1 Cache
 data/external
 
@@ -223,3 +232,45 @@ aws_setup_guide.md
 
 # GitHub Action guide
 github_actions_guide.md
+
+# Dagster home directory and metadata
+dagster_home/
+.dagster/
+.dagster_home/
+dagster_home.yaml
+
+# Dagster run storage (if using filesystem)
+runs/
+
+# Dagster compute logs (local development)
+/tmp/dagster/
+tmp/dagster/
+logs/dagster/
+
+# Dagster schedules and sensors state
+schedules/
+sensors/
+
+# MLflow tracking data (local development)
+mlruns/
+mlartifacts/
+
+# MLflow model registry
+mlflow.db
+
+# Large model files
+*.h5
+*.pkl
+*.pickle
+*.joblib
+*.model
+*.pt
+*.pth
+*.onnx
+
+# Docker volumes data (not tracked)
+docker/volumes/
+
+# AWS credentials (NEVER commit these!)
+.aws/
+aws-credentials.json
