@@ -843,15 +843,17 @@ class SessionLoader:
             session_obj = self.client.get_session(year, event, session)
 
             summary = {
-                "event_name": session_obj.event.EventName
-                if hasattr(session_obj, "event")
-                else None,
-                "session_name": session_obj.name
-                if hasattr(session_obj, "name")
-                else None,
-                "session_date": session_obj.date
-                if hasattr(session_obj, "date")
-                else None,
+                "event_name": (
+                    session_obj.event.EventName
+                    if hasattr(session_obj, "event")
+                    else None
+                ),
+                "session_name": (
+                    session_obj.name if hasattr(session_obj, "name") else None
+                ),
+                "session_date": (
+                    session_obj.date if hasattr(session_obj, "date") else None
+                ),
                 "has_laps": hasattr(session_obj, "laps") and not session_obj.laps.empty,
                 "has_results": hasattr(session_obj, "results")
                 and not session_obj.results.empty,
@@ -860,9 +862,9 @@ class SessionLoader:
                 "has_race_control_msgs": hasattr(session_obj, "race_control_messages")
                 and not session_obj.race_control_messages.empty,
                 "lap_count": getattr(session_obj, "total_laps"),
-                "driver_count": len(session_obj.results)
-                if hasattr(session_obj, "results")
-                else 0,
+                "driver_count": (
+                    len(session_obj.results) if hasattr(session_obj, "results") else 0
+                ),
             }
 
             # Add cache information
