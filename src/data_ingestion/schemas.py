@@ -459,7 +459,11 @@ class WeatherSchema(BaseModel):
 
     @field_validator("AirTemp")
     @classmethod
-    def validate_air_temp(cls, v: float, info) -> float:  # pylint: disable=unused-argument
+    def validate_air_temp(
+        cls,
+        v: float,
+        info,  # pylint: disable=unused-argument
+    ) -> float:  # pylint: disable=unused-argument
         """Ensure air temp is within reasonable range"""
 
         if v < 0:
@@ -470,7 +474,11 @@ class WeatherSchema(BaseModel):
 
     @field_validator("Humidity")
     @classmethod
-    def validate_humidity(cls, v: float, info) -> float:  # pylint: disable=unused-argument
+    def validate_humidity(
+        cls,
+        v: float,
+        info,  # pylint: disable=unused-argument
+    ) -> float:  # pylint: disable=unused-argument
         """Ensure air temp is within reasonable range"""
 
         if v > 100:
@@ -479,7 +487,11 @@ class WeatherSchema(BaseModel):
 
     @field_validator("TrackTemp")
     @classmethod
-    def validate_track_temp(cls, v: float, info) -> float:
+    def validate_track_temp(
+        cls,
+        v: float,
+        info,
+    ) -> float:
         """Ensure track temp is warmer than air temp (usually)"""
 
         air_temp = info.data.get("AirTemp")
