@@ -1,6 +1,7 @@
 """
 Logging configuration for the project
 """
+
 # pylint: disable=line-too-long
 
 import os
@@ -248,7 +249,7 @@ def setup_logging():
     logger.info("Environment: %s", ENVIRONMENT)
 
 
-def get_logger(name: str = None) -> logging.Logger:
+def get_logger(name: str) -> logging.Logger:
     """
     Get a logger instance.
 
@@ -259,6 +260,4 @@ def get_logger(name: str = None) -> logging.Logger:
         logger (logging.Logger): The logger instance.
     """
 
-    if name is None:
-        name = __name__
     return logging.getLogger(name)
