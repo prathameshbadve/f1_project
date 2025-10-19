@@ -105,10 +105,10 @@ class StorageConfig(Config):
         self.secret_key = secret_key or os.getenv("MINIO_SECRET_KEY", "minioadmin")
         self.secure = secure or os.getenv("MINIO_SECURE", "False").lower() == "true"
         self.raw_bucket_name = raw_bucket_name or os.getenv(
-            "MINIO_BUCKET_RAW", "f1-raw-data-dev"
+            "MINIO_BUCKET_RAW", "dev-f1-data-raw"
         )
         self.processed_bucket_name = processed_bucket_name or os.getenv(
-            "MINIO_BUCKET_PROCESSED", "f1-processed-data-dev"
+            "MINIO_BUCKET_PROCESSED", "dev-f1-data-processed"
         )
         self.region = region  # MinIO doesn't require region
 
