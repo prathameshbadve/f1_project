@@ -494,7 +494,8 @@ class TestPerformance:
         )
 
         # Override storage client
-        pipeline.storage_client.config.raw_bucket_name = "f1-test-data"
+        pipeline.storage_client.config.raw_bucket_name = "f1-test-raw-data"
+        pipeline.storage_client.config.processed_bucket_name = "f1-test-processed-data"
 
         start = time.time()
 
@@ -519,7 +520,7 @@ def test_end_to_end_smoke_test(
     # Initialize all components
     fastf1_client = FastF1Client()
     storage_client = StorageClient()
-    storage_client.config.raw_bucket_name = "f1-test-data"
+    storage_client.config.raw_bucket_name = "f1-test-raw-data"
     validator = DataValidator()
 
     # Fetch

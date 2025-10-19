@@ -103,8 +103,8 @@ jobs:
                   python -c "
                   from minio import Minio
                   client = Minio('localhost:9000', access_key='minioadmin', secret_key='minioadmin', secure=False)
-                  if not client.bucket_exists('f1-test-data'):
-                      client.make_bucket('f1-test-data')
+                  if not client.bucket_exists('f1-test-raw-data'):
+                      client.make_bucket('f1-test-raw-data')
                       print('Created test bucket')
                   "
 
@@ -113,7 +113,8 @@ jobs:
                   MINIO_ENDPOINT: localhost:9000
                   MINIO_ACCESS_KEY: minioadmin
                   MINIO_SECRET_KEY: minioadmin
-                  MINIO_BUCKET_RAW: f1-test-data
+                  MINIO_BUCKET_RAW: f1-test-raw-data
+                  MINIO_BUCKET_PROCESSED: f1-test-processed-data
                   MINIO_SECURE: false
                   DB_HOST: localhost
                   DB_PORT: 5432
@@ -201,8 +202,8 @@ jobs:
                   python -c "
                   from minio import Minio
                   client = Minio('localhost:9000', access_key='minioadmin', secret_key='minioadmin', secure=False)
-                  if not client.bucket_exists('f1-test-data'):
-                      client.make_bucket('f1-test-data')
+                  if not client.bucket_exists('f1-test-raw-data'):
+                      client.make_bucket('f1-test-raw-data')
                   "
 
             - name: Run integration tests
@@ -210,7 +211,8 @@ jobs:
                   MINIO_ENDPOINT: localhost:9000
                   MINIO_ACCESS_KEY: minioadmin
                   MINIO_SECRET_KEY: minioadmin
-                  MINIO_BUCKET_RAW: f1-test-data
+                  MINIO_BUCKET_RAW: f1-test-raw-data
+                  MINIO_BUCKET_PROCESSED: f1-test-processed-data
                   MINIO_SECURE: false
                   DB_HOST: localhost
                   DB_PORT: 5432
