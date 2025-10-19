@@ -31,23 +31,21 @@ jobs:
                   pip install --upgrade pip
                   pip install -r requirements/test.txt
 
+            # Code formatting with Black
             - name: Check code formatting with Black
               run: |
-                  black --check src/ tests/
+                  black --check src/ tests/ config/
 
+            # Linting with Ruff
             - name: Lint with Ruff
               run: |
-                  ruff check src/ tests/
+                  ruff check src/ tests/ config/
 
+            # Type checking with MyPy
             - name: Type check with MyPy
               run: |
-                  mypy src/ --ignore-missing-imports
+                  mypy src/ config/ tests/ --ignore-missing-imports
               continue-on-error: true # Don't fail on type errors yet
-
-            - name: Lint with Pylint
-              run: |
-                  pylint src/ --disable=C0114,C0115,C0116,R0913,R0914
-              continue-on-error: true # Don't fail on pylint warnings yet
 
     # Job 2: Unit Tests
     unit-tests:
