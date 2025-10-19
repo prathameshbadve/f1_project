@@ -41,14 +41,14 @@ setup_logging()
 def test_raw_bucket_name():
     """Test raw bucket name for MinIO"""
 
-    return "f1-test-raw-data"
+    return "test-f1-data-raw"
 
 
 @pytest.fixture(scope="session")
 def test_processed_bucket_name():
     """Test processed bucket name for MinIO"""
 
-    return "f1-test-processed-data"
+    return "test-f1-data-processed"
 
 
 @pytest.fixture(scope="session")
@@ -1008,7 +1008,7 @@ def cleanup_test_buckets(test_storage_client):
             bucket_name = getattr(bucket, "name", str(bucket))
 
         # Adjust logic as per your naming convention
-        if bucket_name and bucket_name.startswith("f1-test"):
+        if bucket_name and bucket_name.startswith("test-f1"):
             # Delete all objects inside bucket before removing it (safety)
             try:
                 objects = test_storage_client.list_objects(bucket_name=bucket)

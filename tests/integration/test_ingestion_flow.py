@@ -349,7 +349,7 @@ class TestPipelineIntegration:
         )
 
         # Override storage client to use test bucket
-        pipeline.storage_client.config.raw_bucket_name = "f1-test-raw-data"
+        pipeline.storage_client.config.raw_bucket_name = "test-f1-data-raw"
 
         result = pipeline.ingest_session(
             test_race_config["single_session"]["year"],
@@ -375,7 +375,7 @@ class TestPipelineIntegration:
         )
 
         # Override storage client
-        pipeline.storage_client.config.raw_bucket_name = "f1-test-raw-data"
+        pipeline.storage_client.config.raw_bucket_name = "test-f1-data-raw"
 
         results = pipeline.ingest_race_weekend(
             year=test_race_config["single_session"]["year"],
@@ -494,8 +494,8 @@ class TestPerformance:
         )
 
         # Override storage client
-        pipeline.storage_client.config.raw_bucket_name = "f1-test-raw-data"
-        pipeline.storage_client.config.processed_bucket_name = "f1-test-processed-data"
+        pipeline.storage_client.config.raw_bucket_name = "test-f1-data-raw"
+        pipeline.storage_client.config.processed_bucket_name = "test-f1-data-processed"
 
         start = time.time()
 
@@ -520,7 +520,7 @@ def test_end_to_end_smoke_test(
     # Initialize all components
     fastf1_client = FastF1Client()
     storage_client = StorageClient()
-    storage_client.config.raw_bucket_name = "f1-test-raw-data"
+    storage_client.config.raw_bucket_name = "test-f1-data-raw"
     validator = DataValidator()
 
     # Fetch
