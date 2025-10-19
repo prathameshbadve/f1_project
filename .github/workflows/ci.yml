@@ -2,9 +2,9 @@ name: CI - Tests and Code Quality
 
 on:
     push:
-        branches: [main, dev]
+        branches: [dev]
     pull_request:
-        branches: [main, dev]
+        branches: [dev]
     workflow_dispatch: # Allow manual trigger
 
 env:
@@ -54,20 +54,6 @@ jobs:
         needs: code-quality
 
         services:
-            # minio:
-            #     image: quay.io/minio/minio:latest
-            #     ports:
-            #         - 9000:9000
-            #         - 9001:9001
-            #     env:
-            #         MINIO_ROOT_USER: minioadmin
-            #         MINIO_ROOT_PASSWORD: minioadmin
-            #     options: >-
-            #         --health-cmd "curl -f http://localhost:9000/minio/health/live"
-            #         --health-interval 10s
-            #         --health-timeout 5s
-            #         --health-retries 5
-
             postgres:
                 image: postgres:16-alpine
                 ports:
@@ -167,20 +153,6 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
 
         services:
-            # minio:
-            #     image: minio/minio:latest
-            #     ports:
-            #         - 9000:9000
-            #         - 9001:9001
-            #     env:
-            #         MINIO_ROOT_USER: minioadmin
-            #         MINIO_ROOT_PASSWORD: minioadmin
-            #     options: >-
-            #         --health-cmd "curl -f http://localhost:9000/minio/health/live"
-            #         --health-interval 10s
-            #         --health-timeout 5s
-            #         --health-retries 5
-
             postgres:
                 image: postgres:15-alpine
                 ports:
