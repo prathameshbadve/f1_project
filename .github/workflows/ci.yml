@@ -54,19 +54,19 @@ jobs:
         needs: code-quality
 
         services:
-            minio:
-                image: quay.io/minio/minio:latest
-                ports:
-                    - 9000:9000
-                    - 9001:9001
-                env:
-                    MINIO_ROOT_USER: minioadmin
-                    MINIO_ROOT_PASSWORD: minioadmin
-                options: >-
-                    --health-cmd "curl -f http://localhost:9000/minio/health/live"
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
+            # minio:
+            #     image: quay.io/minio/minio:latest
+            #     ports:
+            #         - 9000:9000
+            #         - 9001:9001
+            #     env:
+            #         MINIO_ROOT_USER: minioadmin
+            #         MINIO_ROOT_PASSWORD: minioadmin
+            #     options: >-
+            #         --health-cmd "curl -f http://localhost:9000/minio/health/live"
+            #         --health-interval 10s
+            #         --health-timeout 5s
+            #         --health-retries 5
 
             postgres:
                 image: postgres:16-alpine
@@ -96,6 +96,20 @@ jobs:
               run: |
                   pip install --upgrade pip
                   pip install -r requirements/test.txt
+
+            - name: Start MinIO container
+              run: |
+                  docker run -d \
+                  --name minio \
+                  -p 9000:9000 \
+                  -p 9001:9001 \
+                  -e MINIO_ROOT_USER=minioadmin \
+                  -e MINIO_ROOT_PASSWORD=minioadmin \
+                  minio/minio:latest server /data --console-address ":9001"
+
+            - name: Wait for MinIO to be ready
+              run: |
+                  timeout 30 bash -c 'until curl -f http://localhost:9000/minio/health/live; do sleep 2; done'
 
             - name: Create test bucket in MinIO
               run: |
@@ -153,19 +167,19 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
 
         services:
-            minio:
-                image: minio/minio:latest
-                ports:
-                    - 9000:9000
-                    - 9001:9001
-                env:
-                    MINIO_ROOT_USER: minioadmin
-                    MINIO_ROOT_PASSWORD: minioadmin
-                options: >-
-                    --health-cmd "curl -f http://localhost:9000/minio/health/live"
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
+            # minio:
+            #     image: minio/minio:latest
+            #     ports:
+            #         - 9000:9000
+            #         - 9001:9001
+            #     env:
+            #         MINIO_ROOT_USER: minioadmin
+            #         MINIO_ROOT_PASSWORD: minioadmin
+            #     options: >-
+            #         --health-cmd "curl -f http://localhost:9000/minio/health/live"
+            #         --health-interval 10s
+            #         --health-timeout 5s
+            #         --health-retries 5
 
             postgres:
                 image: postgres:15-alpine
@@ -195,6 +209,20 @@ jobs:
               run: |
                   pip install --upgrade pip
                   pip install -r requirements/test.txt
+
+            - name: Start MinIO container
+              run: |
+                  docker run -d \
+                  --name minio \
+                  -p 9000:9000 \
+                  -p 9001:9001 \
+                  -e MINIO_ROOT_USER=minioadmin \
+                  -e MINIO_ROOT_PASSWORD=minioadmin \
+                  minio/minio:latest server /data --console-address ":9001"
+
+            - name: Wait for MinIO to be ready
+              run: |
+                  timeout 30 bash -c 'until curl -f http://localhost:9000/minio/health/live; do sleep 2; done'
 
             - name: Create test bucket in MinIO
               run: |
