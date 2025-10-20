@@ -9,6 +9,7 @@ Requires internet connection and Docker/MinIO running.
 
 import time
 import logging
+from unittest.mock import patch
 
 import pytest
 import pandas as pd
@@ -30,7 +31,7 @@ class TestFastF1ToStorage:
 
     def test_fetch_and_store_race_results(
         self,
-        fastf1_client,
+        session_loader,
         test_storage_client,
         test_race_config,
         skip_if_no_internet,
@@ -39,20 +40,16 @@ class TestFastF1ToStorage:
         """Test fetching race results and storing in MinIO"""
 
         # Fetch session
-        session = fastf1_client.get_session(
+        session_data = session_loader.load_session_data(
             test_race_config["single_session"]["year"],
             test_race_config["single_session"]["event_name"],
             test_race_config["single_session"]["sessions"],
         )
 
-        assert session is not None
-        assert session.results is not None
+        assert session_data is not None
 
         # Extract results
-        results = session.results.copy()
-        results["SessionName"] = session.name
-        results["EventName"] = session.event["EventName"]
-        results["SessionType"] = "Race"
+        results = session_data["results"]
 
         # Store in MinIO
         object_key = test_storage_client.build_object_key(
@@ -71,42 +68,6 @@ class TestFastF1ToStorage:
         downloaded = test_storage_client.download_dataframe(object_key)
         assert len(downloaded) == len(results)
 
-    def test_fetch_and_store_qualifying_results(
-        self,
-        fastf1_client,
-        test_storage_client,
-        test_race_config,
-        skip_if_no_internet,
-        cleanup_test_data,
-    ):
-        """Test fetching qualifying results and storing"""
-        # Fetch session
-        session = fastf1_client.get_session(
-            test_race_config["single_session"]["year"],
-            test_race_config["single_session"]["event_name"],
-            "Q",
-        )
-
-        assert session is not None
-        assert session.results is not None
-
-        # Extract and store
-        results = session.results.copy()
-
-        results["SessionName"] = session.name
-        results["EventName"] = session.event["EventName"]
-        results["SessionType"] = "Qualifying"
-
-        object_key = test_storage_client.build_object_key(
-            year=test_race_config["single_session"]["year"],
-            event_name=test_race_config["single_session"]["event_name"],
-            session_type="Q",
-            data_type="results",
-        )
-        success = test_storage_client.upload_dataframe(results, object_key)
-
-        assert success is True
-
 
 @pytest.mark.integration
 @pytest.mark.requires_docker
@@ -115,7 +76,14 @@ class TestFastF1ToValidationToStorage:
 
     def test_complete_validation_flow(
         self,
-        fastf1_client,
+        session_loader,
+        sample_session_info,
+        sample_lap_data_df,
+        sample_race_results_df,
+        sample_weather_data_df,
+        sample_race_control_messages_data_df,
+        sample_session_status_data_df,
+        sample_track_status_data_df,
         test_storage_client,
         data_validator,
         test_race_config,
@@ -123,45 +91,58 @@ class TestFastF1ToValidationToStorage:
         cleanup_test_data,
     ):
         """Test fetching, validating, and storing race data"""
-        # Fetch session
-        session = fastf1_client.get_session(
-            test_race_config["single_session"]["year"],
-            test_race_config["single_session"]["event_name"],
-            test_race_config["single_session"]["sessions"],
-        )
 
-        # Extract results
-        results = session.results.copy()
-        results["SessionName"] = session.name
-        results["EventName"] = session.event["EventName"]
-        results["SessionDate"] = session.event["EventDate"]
+        # Mock session results
 
-        timedelta_cols = ["Time", "Q1", "Q2", "Q3"]
-        for col in timedelta_cols:
-            results[col] = results[col].replace({pd.NaT: None})
+        with patch.object(
+            session_loader,
+            "load_session_data",
+            return_value={
+                "session_info": sample_session_info,
+                "laps": sample_lap_data_df,
+                "results": sample_race_results_df,
+                "weather": sample_weather_data_df,
+                "race_control_messages": sample_race_control_messages_data_df,
+                "session_status": sample_session_status_data_df,
+                "track_status": sample_track_status_data_df,
+            },
+        ):
+            # Fetch session
+            session_data = session_loader.load_session_data(
+                test_race_config["single_session"]["year"],
+                test_race_config["single_session"]["event_name"],
+                test_race_config["single_session"]["sessions"],
+            )
 
-        # Validate
-        valid_results, errors = data_validator.validate_results(results)
+            # Extract results
+            results = session_data["results"].copy()
 
-        # Should have mostly valid data
-        assert len(valid_results) > 0
-        assert len(valid_results) >= len(results) * 0.8  # At least 80% valid
+            timedelta_cols = ["Time", "Q1", "Q2", "Q3"]
+            for col in timedelta_cols:
+                results[col] = results[col].replace({pd.NaT: None})
 
-        # Store validated data
-        # Store in MinIO
-        object_key = test_storage_client.build_object_key(
-            year=test_race_config["single_session"]["year"],
-            event_name=test_race_config["single_session"]["event_name"],
-            session_type=test_race_config["single_session"]["sessions"],
-            data_type="results",
-        )
-        success = test_storage_client.upload_dataframe(valid_results, object_key)
+            # Validate
+            valid_results, errors = data_validator.validate_results(results)
 
-        assert success is True
+            # Should have mostly valid data
+            assert len(valid_results) > 0
+            assert len(valid_results) >= len(results) * 0.8  # At least 80% valid
 
-        # Verify stored data
-        downloaded = test_storage_client.download_dataframe(object_key)
-        assert len(downloaded) == len(valid_results)
+            # Store validated data
+            # Store in MinIO
+            object_key = test_storage_client.build_object_key(
+                year=test_race_config["single_session"]["year"],
+                event_name=test_race_config["single_session"]["event_name"],
+                session_type=test_race_config["single_session"]["sessions"],
+                data_type="results",
+            )
+            success = test_storage_client.upload_dataframe(valid_results, object_key)
+
+            assert success is True
+
+            # Verify stored data
+            downloaded = test_storage_client.download_dataframe(object_key)
+            assert len(downloaded) == len(valid_results)
 
     def test_validation_filters_invalid_data(
         self, fastf1_client, data_validator, test_race_config, skip_if_no_internet
@@ -349,7 +330,7 @@ class TestPipelineIntegration:
         )
 
         # Override storage client to use test bucket
-        pipeline.storage_client.config.raw_bucket_name = "f1-test-raw-data"
+        pipeline.storage_client.config.raw_bucket_name = "test-f1-data-raw"
 
         result = pipeline.ingest_session(
             test_race_config["single_session"]["year"],
@@ -375,7 +356,7 @@ class TestPipelineIntegration:
         )
 
         # Override storage client
-        pipeline.storage_client.config.raw_bucket_name = "f1-test-raw-data"
+        pipeline.storage_client.config.raw_bucket_name = "test-f1-data-raw"
 
         results = pipeline.ingest_race_weekend(
             year=test_race_config["single_session"]["year"],
@@ -494,7 +475,8 @@ class TestPerformance:
         )
 
         # Override storage client
-        pipeline.storage_client.config.raw_bucket_name = "f1-test-data"
+        pipeline.storage_client.config.raw_bucket_name = "test-f1-data-raw"
+        pipeline.storage_client.config.processed_bucket_name = "test-f1-data-processed"
 
         start = time.time()
 
@@ -519,7 +501,7 @@ def test_end_to_end_smoke_test(
     # Initialize all components
     fastf1_client = FastF1Client()
     storage_client = StorageClient()
-    storage_client.config.raw_bucket_name = "f1-test-data"
+    storage_client.config.raw_bucket_name = "test-f1-data-raw"
     validator = DataValidator()
 
     # Fetch

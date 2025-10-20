@@ -210,26 +210,30 @@ def setup_logging():
         loggers["data_ingestion"]["handlers"].append("data_ingestion_json")
         loggers["data_processing"]["handlers"].append("data_processing_json")
 
-    elif ENVIRONMENT == "testing":
-        # Log file for unit tests
-        handlers["test_handler"] = {
-            "class": "logging.handlers.RotatingFileHandler",
-            "level": os.getenv("log_level", "INFO"),
-            "formatter": "detailed",
-            "filename": log_dir / "test.log",
-            "maxBytes": int(os.getenv("LOG_MAX_SIZE", "10485760")),
-            "backupCount": int(os.getenv("LOG_BACKUP_COUNT", "5")),
-        }
-        # For unit tests
-        loggers["test"] = {
-            "handlers": [
-                "console",
-                "test_handler",
-                "file_error",
-            ],
-            "level": "DEBUG",
-            "propagate": False,
-        }
+    # elif ENVIRONMENT == "testing":
+    #     # Log file for unit tests
+    #     handlers["test_handler"] = {
+    #         "class": "logging.handlers.RotatingFileHandler",
+    #         "level": os.getenv("log_level", "INFO"),
+    #         "formatter": "detailed",
+    #         "filename": log_dir / "test.log",
+    #         "maxBytes": int(os.getenv("LOG_MAX_SIZE", "10485760")),
+    #         "backupCount": int(os.getenv("LOG_BACKUP_COUNT", "5")),
+    #     }
+    #     # For unit tests
+    #     loggers.update(
+    #         {
+    #             "test": {
+    #                 "handlers": [
+    #                     "console",
+    #                     "test_handler",
+    #                     "file_error",
+    #                 ],
+    #                 "level": "DEBUG",
+    #                 "propagate": False,
+    #             }
+    #         }
+    #     )
 
     # Log Configuration
     log_config = {
@@ -247,6 +251,8 @@ def setup_logging():
     logger = logging.getLogger("logging_config")
     logger.info("Logging configured. Log directory: %s", log_dir.absolute())
     logger.info("Environment: %s", ENVIRONMENT)
+
+    # return log_config
 
 
 def get_logger(name: str) -> logging.Logger:

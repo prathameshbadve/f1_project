@@ -222,149 +222,22 @@ class ScheduleLoader:
         self.logger.info("Force refreshing schedule for %d", year)
         return self.load_season_schedule(year, save_to_file=True, force_refresh=True)
 
-    def get_event(
+    def get_sessions_to_load(
         self,
         year: int,
         event_name: str,
-        save_to_file: bool = False,
-        force_refresh: bool = False,
-    ) -> Optional[pd.Series]:
-        """
-        Get specific event details from the schedule
-
-        Args:
-            year: Season year
-            event_name: Name of the event
-
-        Returns:
-            Event details as a pandas Series or None if not found
-        """
-
-        self.logger.info(
-            "Getting event '%s' for year %d (force_refresh=%s)",
-            event_name,
-            year,
-            force_refresh,
-        )
-
-        if not force_refresh:
-            cached_event_info = self._load_event_info_from_storage(year, event_name)
-            if cached_event_info is not None:
-                return cached_event_info
-
-        # Load event info from API
-        self.logger.info("Loading event '%s' from API for year %d", event_name, year)
-
-        try:
-            event_info = self.client.get_event(year, event_name)
-
-            event_info = event_info.copy()
-            event_info["Season"] = year  # Add year column
-            event_info_df = event_info.to_frame().T
-
-            if save_to_file:
-                object_key = self.storage_client.build_object_key(
-                    "event_info", year, event_name
-                )
-                self.storage_client.upload_dataframe(event_info_df, object_key)
-
-            return event_info_df
-
-        except Exception as e:
-            self.logger.error(
-                "Failed to get event info '%s' for year %d: %s",
-                event_name,
-                year,
-                str(e),
-            )
-            raise
-
-    def _load_event_info_from_storage(self, year: int, event_name: str):
-        """Loads event info file from storage if it exists"""
-
-        object_key = self.storage_client.build_object_key(
-            "event_info", year, event_name
-        )
-
-        # Check if the event info file is valid
-        if not self._is_event_info_file_valid(object_key):
-            return None
-
-        try:
-            event_info = self.storage_client.download_dataframe(object_key)
-            if event_info is not None and not event_info.empty:
-                self.logger.info(
-                    "Loaded event info for '%s' %d from local file: %s",
-                    event_name,
-                    year,
-                    object_key,
-                )
-                return event_info
-
-            return None
-
-        except Exception as e:  # pylint: disable=broad-except
-            self.logger.error(
-                "Failed to load event info from file %s: %s", object_key, str(e)
-            )
-            return None
-
-    def _is_event_info_file_valid(self, object_key: str) -> bool:
-        """Checks if the existing event info file in the bucket is valid"""
-
-        if not self.storage_client.object_exists(object_key):
-            self.logger.warning("Event info file does not exist: %s", object_key)
-            return False
-
-        try:
-            event_info_data = self.storage_client.download_dataframe(object_key)
-
-            if event_info_data.empty:
-                self.logger.warning(
-                    "Event info file exists but is empty/invalid: %s", object_key
-                )
-                return False
-
-            # Validate required columns
-            required_columns = [
-                "RoundNumber",
-                "EventName",
-                "EventFormat",
-                "Season",
-                "Session1",
-                "Session2",
-                "Session3",
-                "Session4",
-                "Session5",
-            ]
-            missing_columns = [
-                col for col in required_columns if col not in event_info_data.columns
-            ]
-
-            if missing_columns:
-                self.logger.warning(
-                    "Event info file missing required columns %s: %s",
-                    missing_columns,
-                    object_key,
-                )
-                return False
-
-            self.logger.debug("Event info file valid: %s", object_key)
-            return True
-
-        except Exception as e:  # pylint: disable=broad-except
-            self.logger.warning(
-                "Error validating event info file %s: %s", object_key, str(e)
-            )
-            return False
-
-    def get_sessions_to_load(self, year: int, event_name: str) -> List[str]:
+    ) -> List[str]:
         """Get list of session types to load for an event based on its format"""
 
         self.logger.info("Loading sessions to load for '%s' %d", event_name, year)
 
+        season_schedule = self.load_season_schedule(
+            year, save_to_file=False, force_refresh=False
+        )
+
+        event_info_df = season_schedule[season_schedule["EventName"] == event_name]
+
         try:
-            event_info_df = self.get_event(year, event_name)
             sessions_to_load = [
                 event_info_df["Session1"].iloc[0],
                 event_info_df["Session2"].iloc[0],

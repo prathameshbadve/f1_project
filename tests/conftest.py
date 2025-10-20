@@ -8,6 +8,7 @@ This file provides common fixtures used across all tests.
 
 import os
 import json
+import logging
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import Mock
@@ -15,7 +16,6 @@ import socket
 import urllib.request
 import time
 
-from dotenv import load_dotenv
 import pytest
 import pandas as pd
 
@@ -25,11 +25,23 @@ from config.settings import StorageConfig
 from src.data_ingestion.storage_client import StorageClient
 from src.data_ingestion.fastf1_client import FastF1Client
 from src.data_ingestion.schemas import DataValidator
+from src.data_ingestion.schedule_loader import ScheduleLoader
+from src.data_ingestion.session_data_loader import SessionLoader
 
-load_dotenv()
 
-# Setup logging for tests
-setup_logging()
+@pytest.fixture(scope="session", autouse=True)
+def configure_logging():
+    """Configure logging before any tests run"""
+
+    # Clear everything
+    logging.root.handlers.clear()
+    for logger in logging.Logger.manager.loggerDict.values():
+        if isinstance(logger, logging.Logger):
+            logger.handlers.clear()
+
+    # Setup your configuration
+    setup_logging()
+    logging.getLogger("faker").setLevel(logging.WARNING)
 
 
 # ============================================================================
@@ -41,14 +53,14 @@ setup_logging()
 def test_raw_bucket_name():
     """Test raw bucket name for MinIO"""
 
-    return "f1-test-raw-data"
+    return "test-f1-data-raw"
 
 
 @pytest.fixture(scope="session")
 def test_processed_bucket_name():
     """Test processed bucket name for MinIO"""
 
-    return "f1-test-processed-data"
+    return "test-f1-data-processed"
 
 
 @pytest.fixture(scope="session")
@@ -91,7 +103,7 @@ def test_storage_client(test_storage_config):
 
 @pytest.fixture(scope="session")
 def fastf1_client():
-    """FastF1 client for integration tests"""
+    """FastF1 client instance"""
 
     return FastF1Client()
 
@@ -101,6 +113,20 @@ def data_validator():
     """Data validator instance"""
 
     return DataValidator()
+
+
+@pytest.fixture(scope="session")
+def schedule_loader(test_storage_client):
+    """Schedule loader instance"""
+
+    return ScheduleLoader(storage_client=test_storage_client)
+
+
+@pytest.fixture(scope="session")
+def session_loader(test_storage_client):
+    """Schedule loader instance"""
+
+    return SessionLoader(storage_client=test_storage_client)
 
 
 # ============================================================================
@@ -217,6 +243,28 @@ def sample_season_schedule():
             "Season": [2024, 2024, 2024],
         }
     )
+
+
+@pytest.fixture
+def sample_session_info():
+    """Sample session info dictionary"""
+
+    return {
+        "event_name": "Italian Grand Prix",
+        "location": "Monza",
+        "country": "Italy",
+        "session_name": "Race",
+        "session_date": pd.Timestamp("2024-03-09 20:00:00+0300", tz="UTC+03:00"),
+        "total_laps": 53,
+        "event_format": "conventional",
+        "round_number": 15,
+        "official_event_name": "FORMULA 1 GRAN PREMIO HEINEKEN D'ITALIA 2024",
+        "session_1": "Practice 1",
+        "session_2": "Practice 2",
+        "session_3": "Practice 3",
+        "session_4": "Qualifying",
+        "session_5": "Race",
+    }
 
 
 @pytest.fixture
@@ -1008,7 +1056,7 @@ def cleanup_test_buckets(test_storage_client):
             bucket_name = getattr(bucket, "name", str(bucket))
 
         # Adjust logic as per your naming convention
-        if bucket_name and bucket_name.startswith("f1-test"):
+        if bucket_name and bucket_name.startswith("test-f1"):
             # Delete all objects inside bucket before removing it (safety)
             try:
                 objects = test_storage_client.list_objects(bucket_name=bucket)

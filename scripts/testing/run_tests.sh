@@ -17,11 +17,11 @@ echo "Setting up test environment..."
 python -c "
 from minio import Minio
 client = Minio('localhost:9000', access_key='minioadmin', secret_key='minioadmin', secure=False)
-if not client.bucket_exists('f1-test-data'):
-    client.make_bucket('f1-test-data')
-    print('Created test bucket: f1-test-data')
+if not client.bucket_exists('test-f1-data-raw'):
+    client.make_bucket('test-f1-data-raw')
+    print('Created test bucket: test-f1-data-raw')
 else:
-    print('Test bucket exists: f1-test-data')
+    print('Test bucket exists: test-f1-data-raw')
 "
 
 echo ""
