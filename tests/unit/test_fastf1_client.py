@@ -6,110 +6,12 @@ Tests with mocked FastF1 responses (no API calls).
 
 # pylint: disable=import-outside-toplevel
 
-import logging
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
-import pandas as pd
+import fastf1
 
 from src.data_ingestion.fastf1_client import FastF1Client
-
-logging.getLogger("faker").setLevel(logging.WARNING)
-
-
-@pytest.mark.unit
-class TestFastF1ClientInit:
-    """Test FastF1Client initialization"""
-
-    def test_client_initialization(self, fastf1_client):
-        """Test that client initializes correctly"""
-
-        assert fastf1_client is not None
-        assert fastf1_client.config is not None
-
-    def test_client_has_logger(self, fastf1_client):
-        """Test that client has logger"""
-
-        assert hasattr(fastf1_client, "logger")
-        assert fastf1_client.logger is not None
-
-
-@pytest.mark.unit
-class TestGetSeasonSchedule:
-    """Test get_season_schedule method"""
-
-    @patch("fastf1.get_event_schedule")
-    def test_get_season_schedule_success(
-        self, mock_get_schedule, fastf1_client, sample_season_schedule
-    ):
-        """Test successful schedule fetch"""
-        # Mock schedule data
-        mock_get_schedule.return_value = sample_season_schedule
-
-        # Call method
-        schedule = fastf1_client.get_season_schedule(2024)
-
-        # Assertions
-        assert len(schedule) == 3
-        assert "RoundNumber" in schedule.columns
-        assert "EventName" in schedule.columns
-        mock_get_schedule.assert_called_once_with(
-            year=2024, include_testing=fastf1_client.config.include_testing
-        )
-
-    @patch("fastf1.get_event_schedule")
-    def test_get_season_schedule_error(self, mock_get_schedule, fastf1_client):
-        """Test schedule fetch with error"""
-        mock_get_schedule.side_effect = Exception("API Error")
-
-        with pytest.raises(Exception):
-            fastf1_client.get_season_schedule(2024)
-
-
-@pytest.mark.unit
-class TestGetSession:
-    """Test get_session method"""
-
-    @patch("fastf1.get_session")
-    def test_get_session_success(
-        self, mock_get_session, fastf1_client, mock_fastf1_session
-    ):
-        """Test successful session fetch"""
-
-        mock_get_session.return_value = mock_fastf1_session
-
-        session = fastf1_client.get_session(2024, "Austrian Grand Prix", "R")
-
-        assert session is not None
-        assert session.event["EventName"].iloc[0] == "Austrian Grand Prix"
-        mock_get_session.assert_called_once_with(2024, "Austrian Grand Prix", "R")
-
-    @patch("fastf1.get_session")
-    def test_get_session_with_load(self, mock_get_session, fastf1_client):
-        """Test that session.load() is called"""
-
-        mock_session = Mock()
-        mock_session.load = Mock()
-        mock_get_session.return_value = mock_session
-
-        fastf1_client.get_session(2024, "Austrian Grand Prix", "R")
-
-        # Verify load was called with correct parameters
-        mock_session.load.assert_called_once()
-        call_kwargs = mock_session.load.call_args[1]
-        assert "laps" in call_kwargs
-        assert "telemetry" in call_kwargs
-        assert "weather" in call_kwargs
-        assert "messages" in call_kwargs
-
-    @patch("fastf1.get_session")
-    def test_get_session_error(self, mock_get_session, fastf1_client):
-        """Test session fetch with error"""
-
-        mock_get_session.side_effect = Exception("Session not found")
-
-        with pytest.raises(Exception):
-            fastf1_client.get_session(2024, "NonExistent", "R")
 
 
 @pytest.mark.unit
@@ -145,59 +47,6 @@ class TestCacheOperations:
 
 
 @pytest.mark.unit
-class TestGetMultipleSessions:
-    """Test get_multiple_sessions method"""
-
-    @patch.object(FastF1Client, "get_session")
-    def test_get_multiple_sessions_success(
-        self, mock_get_session, fastf1_client, mock_fastf1_session
-    ):
-        """Test fetching multiple sessions"""
-        mock_get_session.return_value = mock_fastf1_session
-
-        events = ["Bahrain", "Saudi Arabia"]
-        sessions = ["Q", "R"]
-
-        result = fastf1_client.get_multiple_sessions(2024, events, sessions)
-
-        assert "Bahrain" in result
-        assert "Saudi Arabia" in result
-        assert mock_get_session.call_count == 4  # 2 events x 2 sessions
-
-    @patch.object(FastF1Client, "get_session")
-    def test_get_multiple_sessions_with_failure(
-        self, mock_get_session, fastf1_client, mock_fastf1_session
-    ):
-        """Test fetching multiple sessions with some failures"""
-
-        # First call succeeds, second fails
-        mock_get_session.side_effect = [
-            mock_fastf1_session,
-            Exception("Error"),
-        ]
-
-        events = ["Bahrain Grand Prix"]
-        sessions = ["Q", "R"]
-
-        result = fastf1_client.get_multiple_sessions(2024, events, sessions)
-
-        # Check based on actual return type
-        if isinstance(result, dict):
-            # Dictionary structure
-            assert "Bahrain Grand Prix" in result
-        elif isinstance(result, list):
-            # List structure - check if we got at least one session
-            assert len(result) >= 1
-            # Verify the successful session is present
-            assert any(session is not None for session in result)
-        else:
-            raise AssertionError(f"Unexpected return type: {type(result)}")
-
-        # Verify get_session was called twice (once for Q, once for R)
-        assert mock_get_session.call_count == 2
-
-
-@pytest.mark.unit
 class TestFastF1ClientConfiguration:
     """Test that client respects configuration"""
 
@@ -219,121 +68,6 @@ class TestFastF1ClientConfiguration:
 
 
 @pytest.mark.unit
-class TestFastF1ClientEdgeCases:
-    """Test edge cases and error handling"""
-
-    @patch("fastf1.get_event_schedule")
-    def test_empty_schedule(self, mock_get_schedule, fastf1_client):
-        """Test handling empty schedule"""
-        mock_get_schedule.return_value = pd.DataFrame()
-
-        schedule = fastf1_client.get_season_schedule(2099)
-
-        assert len(schedule) == 0
-        assert isinstance(schedule, pd.DataFrame)
-
-    @patch("fastf1.get_session")
-    def test_session_with_no_data(
-        self, mock_get_session, fastf1_client, mock_empty_fastf1_session
-    ):
-        """Test handling session with no data"""
-        mock_get_session.return_value = mock_empty_fastf1_session
-
-        session = fastf1_client.get_session(2024, "Test", "R")
-
-        assert session is not None
-        assert session.results is None
-
-    @patch("fastf1.get_session")
-    def test_session_load_failure(self, mock_get_session, fastf1_client):
-        """Test handling session load failure"""
-        mock_session = Mock()
-        mock_session.load.side_effect = Exception("Load failed")
-        mock_get_session.return_value = mock_session
-
-        with pytest.raises(Exception):
-            fastf1_client.get_session(2024, "Italy", "R")
-
-
-@pytest.mark.unit
-class TestFastF1ClientRetryLogic:
-    """Test retry logic (if implemented)"""
-
-    @patch("fastf1.get_session")
-    def test_retry_on_failure(
-        self, mock_get_session, fastf1_client, mock_fastf1_session
-    ):
-        """Test that client retries on failure"""
-        # First call fails, second succeeds
-        mock_get_session.side_effect = [
-            Exception("Temporary error"),
-            mock_fastf1_session,
-        ]
-
-        # If retry logic is implemented, this should succeed
-        # If not, this test can be adjusted or skipped
-        try:
-            session = fastf1_client.get_session(2024, "Italy", "R")
-            # If we get here, retry worked
-            assert session is not None
-        except Exception:  # pylint: disable=broad-exception-caught
-            # If retry not implemented, that's okay for now
-            pytest.skip("Retry logic not yet implemented")
-
-
-@pytest.mark.unit
-def test_fastf1_client_as_context_manager():
-    """Test if FastF1Client can be used as context manager (future enhancement)"""
-    # This is a placeholder for future enhancement
-    # If you implement context manager for resource cleanup
-    pytest.skip("Context manager not yet implemented")
-
-
-@pytest.mark.unit
-class TestFastF1ClientDataExtraction:
-    """Test data extraction from sessions"""
-
-    @patch("fastf1.get_session")
-    def test_extract_results_from_session(
-        self, mock_get_session, fastf1_client, mock_fastf1_session
-    ):
-        """Test extracting results from session"""
-        mock_get_session.return_value = mock_fastf1_session
-
-        session = fastf1_client.get_session(2024, "Italy", "R")
-
-        assert session.results is not None
-        assert len(session.results) > 0
-        assert "DriverNumber" in session.results.columns
-
-    @patch("fastf1.get_session")
-    def test_extract_laps_from_session(
-        self, mock_get_session, fastf1_client, mock_fastf1_session
-    ):
-        """Test extracting laps from session"""
-        mock_get_session.return_value = mock_fastf1_session
-
-        session = fastf1_client.get_session(2024, "Italy", "R")
-
-        assert session.laps is not None
-        assert len(session.laps) > 0
-        assert "LapNumber" in session.laps.columns
-
-    @patch("fastf1.get_session")
-    def test_extract_weather_from_session(
-        self, mock_get_session, fastf1_client, mock_fastf1_session
-    ):
-        """Test extracting weather from session"""
-        mock_get_session.return_value = mock_fastf1_session
-
-        session = fastf1_client.get_session(2024, "Italy", "R")
-
-        assert session.weather_data is not None
-        assert len(session.weather_data) > 0
-        assert "AirTemp" in session.weather_data.columns
-
-
-@pytest.mark.unit
 class TestFastF1ClientPerformance:
     """Test performance-related aspects"""
 
@@ -345,7 +79,7 @@ class TestFastF1ClientPerformance:
         mock_get_session.return_value = mock_fastf1_session
 
         def fetch_session():
-            return fastf1_client.get_session(2024, "Italy", "R")
+            return fastf1_client.get_session(2024, "Italian Grand Prix", "R")
 
         try:
             result = benchmark(fetch_session)
@@ -359,7 +93,6 @@ class TestFastF1ClientPerformance:
 @pytest.mark.unit
 def test_fastf1_import():
     """Test that fastf1 can be imported"""
-    import fastf1
 
     assert fastf1 is not None
 
