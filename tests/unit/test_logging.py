@@ -35,6 +35,8 @@ def test_logging_handlers():
 
     assert test_logger is not None, "Logger for 'data_ingestion' should be configured"
     assert test_logger.level == 20, "Test logger level should be 20 (INFO)"
+    # fmt: off
     assert "data_ingestion" in [handler.name for handler in test_logger.handlers], (
         "Logger should have 'test_handler' in its handlers"
     )
+    # fmt: on
