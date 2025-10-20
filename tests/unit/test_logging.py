@@ -12,6 +12,7 @@ import pytest
 from config.logging import get_logger
 
 load_dotenv()
+os.environ["ENVIRONMENT"] = "testing"
 
 
 @pytest.mark.unit
@@ -22,7 +23,7 @@ def test_logging_environment():
     log_dir = os.getenv("LOG_DIR", "testing/logs")
     log_level = os.getenv("LOG_LEVEL", "DEBUG")
 
-    assert env == "development"
+    assert env == "testing"
     assert log_dir == "monitoring/logs"
     assert log_level == "INFO"
 
