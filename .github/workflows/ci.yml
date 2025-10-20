@@ -122,9 +122,12 @@ jobs:
           DB_USER: f1user
           DB_PASSWORD: f1pass
           ENVIRONMENT: testing
+          LOG_DIR: monitoring/logs
+          LOG_LEVEL: INFO
         run: |
           pytest tests/unit/ -v \
             --cov=src \
+            --cov=config \
             --cov-report=xml \
             --cov-report=term \
             --cov-report=html \
@@ -221,6 +224,8 @@ jobs:
           DB_PASSWORD: f1pass
           ENVIRONMENT: testing
           FASTF1_CACHE_DIR: /tmp/fastf1_cache
+          LOG_DIR: monitoring/logs
+          LOG_LEVEL: INFO
         run: |
           pytest tests/integration/ -v \
             --cov=src \
