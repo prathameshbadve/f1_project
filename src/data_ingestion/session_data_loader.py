@@ -266,7 +266,9 @@ class SessionLoader:
                 return cached_data
 
             # If we have partial cache, we'll need to load missing data from API
-            if missing_file_names:
+            if missing_file_names and len(missing_file_names) < len(
+                self.file_formats.keys()
+            ):
                 self.logger.info(
                     "Loading missing data from API: %s", missing_file_names
                 )
