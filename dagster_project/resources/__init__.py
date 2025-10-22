@@ -3,20 +3,20 @@ Dagster resources for F1 data pipeline
 Resources provide reusable connections to external systems
 """
 
-import time
+# pylint: disable=unused-argument, redefined-builtin
+
 from io import BytesIO
 from typing import Any, Dict, Optional
 
 import mlflow
-import psycopg2
-import requests
+import pandas as pd
 from dagster import ConfigurableResource, InitResourceContext
 from minio import Minio
 from psycopg2.pool import SimpleConnectionPool
+from sqlalchemy import create_engine
 
 from config.settings import (
     database_config,
-    fastf1_config,
     mlflow_config,
     storage_config,
 )
@@ -64,6 +64,75 @@ class StorageResource(ConfigurableResource):
         response = client.get_object(bucket, object_name)
         return response.read().decode("utf-8")
 
+    def upload_dataframe(
+        self,
+        df: pd.DataFrame,
+        object_name: str,
+        bucket: Optional[str] = None,
+        format: str = "parquet",
+    ) -> None:
+        """
+        Upload pandas DataFrame to storage.
+
+        Args:
+            df: DataFrame to upload
+            object_name: Object key/path in storage
+            bucket: Bucket name (defaults to raw bucket)
+            format: File format ('parquet' or 'csv')
+        """
+
+        client = self.get_client()
+        bucket = bucket or self.bucket_raw
+
+        # Convert DataFrame to bytes
+        buffer = BytesIO()
+        if format == "parquet":
+            df.to_parquet(buffer, index=False)
+            content_type = "application/octet-stream"
+        elif format == "csv":
+            df.to_csv(buffer, index=False)
+            content_type = "text/csv"
+        else:
+            raise ValueError(f"Unsupported format: {format}")
+
+        # Upload
+        buffer.seek(0)
+        client.put_object(
+            bucket,
+            object_name,
+            buffer,
+            length=buffer.getbuffer().nbytes,
+            content_type=content_type,
+        )
+
+    def download_dataframe(
+        self,
+        bucket: str,
+        object_name: str,
+        format: str = "parquet",
+    ) -> pd.DataFrame:
+        """
+        Download DataFrame from storage.
+
+        Args:
+            bucket: Bucket name
+            object_name: Object key/path
+            format: File format ('parquet' or 'csv')
+
+        Returns:
+            pandas DataFrame
+        """
+
+        client = self.get_client()
+        response = client.get_object(bucket, object_name)
+
+        if format == "parquet":
+            return pd.read_parquet(BytesIO(response.read()))
+        elif format == "csv":
+            return pd.read_csv(BytesIO(response.read()))
+        else:
+            raise ValueError(f"Unsupported format: {format}")
+
     def list_objects(self, bucket: str, prefix: str = "") -> list:
         """List objects in bucket with optional prefix"""
 
@@ -80,6 +149,25 @@ class StorageResource(ConfigurableResource):
             return True
         except Exception:  # pylint: disable=broad-exception-caught
             return False
+
+    def delete_object(self, bucket: str, object_name: str) -> None:
+        """Delete an object from storage"""
+
+        client = self.get_client()
+        client.remove_object(bucket, object_name)
+
+    def get_object_metadata(self, bucket: str, object_name: str) -> Dict[str, Any]:
+        """Get metadata about an object"""
+
+        client = self.get_client()
+        stat = client.stat_object(bucket, object_name)
+
+        return {
+            "size": stat.size,
+            "last_modified": stat.last_modified,
+            "etag": stat.etag,
+            "content_type": stat.content_type,
+        }
 
 
 class DatabaseResource(ConfigurableResource):
@@ -158,6 +246,33 @@ class DatabaseResource(ConfigurableResource):
         finally:
             self.return_connection(conn)
 
+    def dataframe_to_sql(
+        self, df: pd.DataFrame, table_name: str, if_exists: str = "append"
+    ) -> None:
+        """
+        Write DataFrame to PostgreSQL table.
+
+        Args:
+            df: DataFrame to write
+            table_name: Name of table
+            if_exists: What to do if table exists ('fail', 'replace', 'append')
+        """
+
+        engine = create_engine(
+            f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+        )
+
+        df.to_sql(table_name, engine, if_exists=if_exists, index=False)
+
+    def query_to_dataframe(self, query: str) -> pd.DataFrame:
+        """Execute query and return results as DataFrame"""
+
+        engine = create_engine(
+            f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+        )
+
+        return pd.read_sql(query, engine)
+
 
 class MLflowResource(ConfigurableResource):
     """Resource for MLflow experiment tracking"""
@@ -202,89 +317,11 @@ class MLflowResource(ConfigurableResource):
         mlflow.end_run()
 
 
-class F1APIResource(ConfigurableResource):
-    """Resource for F1 API operations (Ergast API)"""
+# ============================================================================
+# RESOURCE INSTANCES
+# ============================================================================
 
-    base_url: str
-    rate_limit_delay: float
-    timeout: int
-
-    def _make_request(self, endpoint: str, params: Dict[str, Any] = None) -> Dict:
-        """Make API request with rate limiting"""
-
-        url = f"{self.base_url}/{endpoint}.json"
-
-        # Rate limiting
-        time.sleep(self.rate_limit_delay)
-
-        response = requests.get(url, params=params, timeout=self.timeout)
-        response.raise_for_status()
-
-        return response.json()
-
-    def get_race_results(self, year: int, round_number: int) -> Dict:
-        """Get race results for a specific year and round"""
-
-        endpoint = f"{year}/{round_number}/results"
-        return self._make_request(endpoint)
-
-    def get_qualifying_results(self, year: int, round_number: int) -> Dict:
-        """Get qualifying results for a specific year and round"""
-
-        endpoint = f"{year}/{round_number}/qualifying"
-        return self._make_request(endpoint)
-
-    def get_driver_standings(self, year: int, round_number: int = None) -> Dict:
-        """Get driver standings for a year (optionally after specific round)"""
-
-        if round_number:
-            endpoint = f"{year}/{round_number}/driverStandings"
-        else:
-            endpoint = f"{year}/driverStandings"
-        return self._make_request(endpoint)
-
-    def get_constructor_standings(self, year: int, round_number: int = None) -> Dict:
-        """Get constructor standings for a year"""
-
-        if round_number:
-            endpoint = f"{year}/{round_number}/constructorStandings"
-        else:
-            endpoint = f"{year}/constructorStandings"
-        return self._make_request(endpoint)
-
-    def get_race_schedule(self, year: int) -> Dict:
-        """Get race schedule for a specific year"""
-
-        endpoint = f"{year}"
-        return self._make_request(endpoint)
-
-    def get_current_season(self) -> int:
-        """Get current F1 season year"""
-
-        endpoint = "current"
-        data = self._make_request(endpoint)
-        return int(data["MRData"]["RaceTable"]["season"])
-
-    def get_circuits(self, year: int) -> Dict:
-        """Get circuits for a specific year"""
-
-        endpoint = f"{year}/circuits"
-        return self._make_request(endpoint)
-
-    def get_lap_times(self, year: int, round_number: int, lap: int) -> Dict:
-        """Get lap times for a specific lap"""
-
-        endpoint = f"{year}/{round_number}/laps/{lap}"
-        return self._make_request(endpoint)
-
-    def get_pit_stops(self, year: int, round_number: int) -> Dict:
-        """Get pit stop data for a race"""
-
-        endpoint = f"{year}/{round_number}/pitstops"
-        return self._make_request(endpoint)
-
-
-# Resource instances with environment-aware configuration
+# Storage resource (MinIO/S3)
 storage_resource = StorageResource(
     endpoint=storage_config.endpoint,
     access_key=storage_config.access_key,
@@ -295,6 +332,7 @@ storage_resource = StorageResource(
     region=storage_config.region,
 )
 
+# Database resource (PostgreSQL)
 database_resource = DatabaseResource(
     host=database_config.host,
     port=database_config.port,
@@ -303,13 +341,8 @@ database_resource = DatabaseResource(
     password=database_config.password,
 )
 
+# MLflow resource
 mlflow_resource = MLflowResource(
     tracking_uri=mlflow_config.tracking_uri,
     experiment_name=mlflow_config.experiment_name,
 )
-
-# f1_api_resource = F1APIResource(
-#     base_url=f1_api_config["base_url"],
-#     rate_limit_delay=f1_api_config["rate_limit_delay"],
-#     timeout=f1_api_config["timeout"],
-# )
