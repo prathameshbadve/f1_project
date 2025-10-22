@@ -27,6 +27,7 @@ services:
       - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
     environment:
       POSTGRES_USER: f1user
       POSTGRES_PASSWORD: f1pass
@@ -82,11 +83,11 @@ services:
       - "3000:3000"
     environment:
       # Dagster PostgreSQL configuration
-      DAGSTER_POSTGRES_USER: f1user
-      DAGSTER_POSTGRES_PASSWORD: f1pass
-      DAGSTER_POSTGRES_DB: f1_data
       DAGSTER_POSTGRES_HOST: postgres
       DAGSTER_POSTGRES_PORT: 5432
+      DAGSTER_POSTGRES_USER: f1user
+      DAGSTER_POSTGRES_PASSWORD: f1pass
+      DAGSTER_POSTGRES_DB: f1_dagster
       DATABASE_URL: postgresql://f1user:f1pass@postgres:5432/f1_data
 
       # Environment
@@ -103,9 +104,10 @@ services:
       # Database configuration (for application use)
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: f1_data
       DB_USER: f1user
       DB_PASSWORD: f1pass
+      DB_NAME: f1_data
+      DB_URL: postgresql://f1user:f1pass@postgres:5432/f1_dagster
 
       # MLflow configuration
       MLFLOW_TRACKING_URI: http://mlflow:5000
@@ -151,7 +153,7 @@ services:
       # Dagster PostgreSQL configuration
       DAGSTER_POSTGRES_USER: f1user
       DAGSTER_POSTGRES_PASSWORD: f1pass
-      DAGSTER_POSTGRES_DB: f1_data
+      DAGSTER_POSTGRES_DB: f1_dagster
       DAGSTER_POSTGRES_HOST: postgres
       DAGSTER_POSTGRES_PORT: 5432
       DATABASE_URL: postgresql://f1user:f1pass@postgres:5432/f1_data
