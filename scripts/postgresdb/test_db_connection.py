@@ -9,19 +9,19 @@ import psycopg2
 
 load_dotenv()
 
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
+POSTGRES_DB_HOST = os.getenv("POSTGRES_DB_HOST")
+POSTGRES_DB_PORT = os.getenv("POSTGRES_DB_PORT")
+POSTGRES_DB_NAME = os.getenv("POSTGRES_DB_NAME")
+POSTGRES_DB_USER = os.getenv("POSTGRES_DB_USER")
 DB_PASS = os.getenv("DB_PASS")
-DB_URL = os.getenv("DATABASE_URL")
+POSTGRES_DB_URL = os.getenv("DATABASE_URL")
 
 
 def test_db_connection():
     """Test PostgreSQL connection"""
 
     try:
-        conn = psycopg2.connect(DB_URL)
+        conn = psycopg2.connect(POSTGRES_DB_URL)
 
         cursor = conn.cursor()
         cursor.execute("SELECT version();")
