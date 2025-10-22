@@ -16,8 +16,12 @@ from src.utils.helpers import get_project_root, ensure_directory
 load_dotenv()
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-LOG_DIR = os.getenv("LOG_DIR", "mointoring/logs")
+LOG_DIR = os.getenv("LOG_DIR", "monitoring/logs")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+
+# Global flag to ensure setup_logging() only runs once
+_LOGGING_CONFIGURED = False
 
 
 class ColoredFormatter(logging.Formatter):
@@ -53,7 +57,13 @@ class ColoredFormatter(logging.Formatter):
 
 
 def setup_logging():
-    """Function to setup logging"""
+    """Function to setup logging (only runs once)"""
+
+    global _LOGGING_CONFIGURED
+
+    # Check if already configured
+    if _LOGGING_CONFIGURED:
+        return  # Already configured, skip
 
     project_root = get_project_root()
     log_dir = project_root / Path(LOG_DIR)
@@ -246,6 +256,9 @@ def setup_logging():
 
     # Setting up logging configuration as per the above config dictionary
     logging.config.dictConfig(log_config)
+
+    # Setting up logging configuration as per the above config dictionary
+    _LOGGING_CONFIGURED = True
 
     # Log startup info
     logger = logging.getLogger("logging_config")
