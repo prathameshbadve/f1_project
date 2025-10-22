@@ -1,4 +1,4 @@
-# Dagster instance configuration
+# # Dagster instance configuration
 # Storage configuration - PostgreSQL for run storage, event logs, and schedules
 storage:
   postgres:
@@ -35,7 +35,7 @@ compute_logs:
 run_monitoring:
   enabled: true
   start_timeout_seconds: 180
-  max_resume_run_attempts: 3
+  max_resume_run_attempts: 0
 
 # Telemetry - set to false to disable telemetry
 telemetry:
@@ -66,5 +66,10 @@ retention:
 
 # Sensor configuration
 sensors:
+  use_threads: true
+  num_workers: 4
+
+# Schedule configuration
+schedules:
   use_threads: true
   num_workers: 4
