@@ -89,6 +89,7 @@ from dagster import Definitions, load_assets_from_modules
 
 from dagster_project import assets
 from dagster_project.resources import storage_resource
+from dagster_project.jobs import italian_gp_2024_weekend_job
 
 
 # Load all assets from the assets module
@@ -100,6 +101,9 @@ all_assets = load_assets_from_modules([assets])
 # This is what Dagster reads to understand your pipeline
 defs = Definitions(
     assets=all_assets,
+    jobs=[
+        italian_gp_2024_weekend_job,
+    ],
     resources={
         # External system connections
         "storage": storage_resource,

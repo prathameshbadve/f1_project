@@ -366,11 +366,19 @@ Assets are organized into modules:
 
 # Import all assets from submodules
 from dagster_project.assets.raw_ingestion import (
+    italian_gp_2024_fp1,
+    italian_gp_2024_fp2,
+    italian_gp_2024_fp3,
+    italian_gp_2024_qualifying,
     italian_gp_2024_race,
 )
 
 # Export all assets so Dagster can discover them
 __all__ = [
-    # Raw ingestion assets
+    # Italian GP 2024 - All sessions
+    "italian_gp_2024_fp1",
+    "italian_gp_2024_fp2",
+    "italian_gp_2024_fp3",
+    "italian_gp_2024_qualifying",
     "italian_gp_2024_race",
 ]
