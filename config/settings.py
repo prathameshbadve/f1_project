@@ -486,29 +486,101 @@ class DagsterConfig(Config):
 
     def __init__(
         self,
-        run_storage: Optional[Dict[str, str | Dict]] = None,
-        event_log_storage: Optional[Dict[str, str | Dict]] = None,
-        schedule_storage: Optional[Dict[str, str | Dict]] = None,
+        host: Optional[str] = None,
+        port: Optional[str] = None,
+        database: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+        dagster_db_url: Optional[str] = None,
     ):
         super().__init__()
 
-        self.run_storage = run_storage or {
-            "module": "dagster_postgres.run_storage",
-            "class": "PostgresRunStorage",
-            "config": {"postgres_url": database_config.db_url},
-        }
+        if self.environment == Environment.PRODUCTION.value:
+            self._load_production_dagster_config(
+                host,
+                port,
+                database,
+                user,
+                password,
+            )
+        else:
+            self._load_development_dagster_config(
+                host,
+                port,
+                database,
+                user,
+                password,
+            )
 
-        self.event_log_storage = event_log_storage or {
-            "module": "dagster_postgres.event_log",
-            "class": "PostgresEventLogStorage",
-            "config": {"postgres_url": database_config.db_url},
-        }
+        # Support DATABASE_URL override
+        dagster_db_url = os.getenv("DAGSTER_DATABASE_URL")
+        if dagster_db_url:
+            self.dagster_db_url = dagster_db_url
+        else:
+            self.dagster_db_url = (
+                f"postgresql://{self.user}:{self.password}@"
+                f"{self.host}:{self.port}/{self.database}"
+            )
 
-        self.schedule_storage = schedule_storage or {
-            "module": "dagster_postgres.schedule_storage",
-            "class": "PostgresScheduleStorage",
-            "config": {"postgres_url": database_config.db_url},
-        }
+    def _load_development_dagster_config(
+        self,
+        host,
+        port,
+        database,
+        user,
+        password,
+    ):
+        """Development database configuration"""
+
+        self.host = host or os.getenv("DB_HOST", "localhost")
+        self.port = port or int(os.getenv("DB_PORT", "5434"))
+        self.database = database or os.getenv("DAGSTER_DB_NAME", "f1_dagster_data")
+        self.user = user or os.getenv("DB_USER", "f1user")
+        self.password = password or os.getenv("DB_PASSWORD", "f1pass")
+
+    def _load_production_dagster_config(
+        self,
+        host,
+        port,
+        database,
+        user,
+        password,
+    ):
+        """Development database configuration"""
+
+        self.host = host or os.getenv("DB_HOST")
+        self.port = port or int(os.getenv("DB_PORT", "5434"))
+        self.database = database or os.getenv("DAGSTER_DB_NAME")
+        self.user = user or os.getenv("DB_USER")
+        self.password = password or os.getenv("DB_PASSWORD")
+
+    def is_dagster_config_valid(self) -> bool:
+        """
+        Validate that all required configuration values are present.
+
+        Returns:
+            bool: True if configuration is valid
+
+        Raises:
+            ValueError: If required configuration is missing
+        """
+
+        required_fields = [
+            ("host", self.host),
+            ("port", self.port),
+            ("database", self.database),
+            ("user", self.user),
+            ("password", self.password),
+        ]
+
+        missing_fields = [name for name, value in required_fields if not value]
+
+        if missing_fields:
+            raise ValueError(
+                f"Missing required database configuration: {', '.join(missing_fields)}"
+            )
+
+        return True
 
 
 def is_development() -> bool:

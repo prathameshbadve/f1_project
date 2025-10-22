@@ -40,7 +40,9 @@ RUN mkdir -p /opt/dagster/app/dagster_project/assets && \
 # Copy application code
 COPY dagster_project/ /opt/dagster/app/dagster_project/
 COPY config/ /opt/dagster/app/config/
+COPY src/ /opt/dagster/app/src/
 COPY workspace.yaml /opt/dagster/app/workspace.yaml
+COPY pyproject.toml /opt/dagster/app/pyproject.toml
 
 # Copy scripts (optional, for utility functions)
 COPY scripts/ /opt/dagster/app/scripts/
