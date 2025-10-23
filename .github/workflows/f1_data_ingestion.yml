@@ -11,13 +11,13 @@ on:
         default: "2024"
 
       event_name:
-        description: 'Event name(s) - comma-separated for multiple. Example: "Italian Grand Prix" or "Italian Grand Prix,Monaco Grand Prix". Leave empty for all events.'
+        description: "Event name(s) - comma-separated for multiple. Example: Italian Grand Prix or Italian Grand Prix,Monaco Grand Prix. Leave empty for all events."
         required: false
         type: string
         default: ""
 
       session_type:
-        description: 'Session type(s) - comma-separated for multiple. Example: "R" or "R,Q,S". Leave empty for all sessions.'
+        description: "Session type(s) - comma-separated for multiple. Example: R or R,Q,S. Leave empty for all sessions."
         required: false
         type: string
         default: ""
@@ -141,21 +141,38 @@ jobs:
       - name: 🏎️ Run F1 Data Ingestion
         id: ingestion
         env:
+          # Python path - CRITICAL FIX
+          PYTHONPATH: ${{ github.workspace }}
+
+          # Environment
           ENVIRONMENT: production
+
+          # AWS Configuration
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
           S3_BUCKET_RAW: pb-f1-raw-data
+
+          # Database Configuration
           POSTGRES_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           DAGSTER_POSTGRES_DB_URL: ${{ secrets.DAGSTER_DB_URL }}
           DAGSTER_HOME: /tmp/dagster_home
+
+          # FastF1 Configuration
           FASTF1_CACHE_DIR: /tmp/fastf1_cache
           FASTF1_CACHE_ENABLED: False
           FASTF1_LOG_LEVEL: INFO
+
+          # Logging
           LOG_DIR: monitoring/logs
           LOG_LEVEL: INFO
         run: |
           echo "🚀 Starting F1 data ingestion using run_ingestion.py script..."
+          echo ""
+
+          # Verify PYTHONPATH
+          echo "PYTHONPATH: $PYTHONPATH"
+          echo "Current directory: $(pwd)"
           echo ""
 
           # Store inputs in variables
@@ -167,10 +184,11 @@ jobs:
 
           # Add event names if provided
           if [ -n "$EVENT_INPUT" ]; then
-            # Replace commas with space and wrap each event in quotes
-            # "Event1,Event2" becomes "Event1" "Event2"
+            # Use IFS (Internal Field Separator) to split by comma
             IFS=',' read -ra EVENTS <<< "$EVENT_INPUT"
             for event in "${EVENTS[@]}"; do
+              # Trim whitespace
+              event=$(echo "$event" | xargs)
               CMD="$CMD --event \"$event\""
             done
           fi
@@ -178,7 +196,6 @@ jobs:
           # Add session types if provided
           if [ -n "$SESSION_INPUT" ]; then
             # Replace commas with spaces
-            # "R,Q,S" becomes R Q S
             SESSIONS=$(echo "$SESSION_INPUT" | tr ',' ' ')
             CMD="$CMD --session $SESSIONS"
           fi
@@ -203,7 +220,7 @@ jobs:
             monitoring/logs/
             /tmp/dagster_home/
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
       - name: 📝 Job Summary
         if: always()
@@ -224,7 +241,9 @@ jobs:
             echo "❌ **Status**: Failed" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Please check the job logs for details." >> $GITHUB_STEP_SUMMARY
-            echo "Logs have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
+            if [ -d "monitoring/logs" ] && [ "$(ls -A monitoring/logs 2>/dev/null)" ]; then
+              echo "Logs have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
+            fi
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -271,6 +290,9 @@ jobs:
 
       - name: 🔄 Retry Ingestion (Attempt ${{ matrix.attempt }})
         env:
+          # Python path - CRITICAL FIX
+          PYTHONPATH: ${{ github.workspace }}
+
           ENVIRONMENT: production
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -298,6 +320,7 @@ jobs:
           if [ -n "$EVENT_INPUT" ]; then
             IFS=',' read -ra EVENTS <<< "$EVENT_INPUT"
             for event in "${EVENTS[@]}"; do
+              event=$(echo "$event" | xargs)
               CMD="$CMD --event \"$event\""
             done
           fi
@@ -327,7 +350,7 @@ jobs:
             monitoring/logs/
             /tmp/dagster_home/
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
   # Notification job - runs after all retries
   notify-final-status:
