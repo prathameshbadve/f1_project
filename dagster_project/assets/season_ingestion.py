@@ -218,9 +218,8 @@ class F1SessionConfig(Config):
     """
 
     year: int
-    event_name: str = None
-    session_type: str = None
-    session_types: Optional[List[str]] = None  # Override which sessions to ingest
+    event_name: Optional[List[str]] = None
+    session_type: Optional[List[str]] = None
 
 
 @asset(
@@ -256,10 +255,11 @@ def f1_session_configurable(
     year = config.year
     event_name = config.event_name
     session_type = config.session_type
-    session_types = config.session_types
 
     context.log.info(f"Starting ingestion: {year} {event_name} {session_type}")
-    context.log.info(f"Config: year={year}, event={event_name}, session={session_type}")
+    context.log.info(
+        f"Config: year={year}, event(s)={event_name}, session(s)={session_type}"
+    )
 
     dagster_logger.info("Starting ingestion: %d %s %s", year, event_name, session_type)
     dagster_logger.info(
@@ -271,61 +271,178 @@ def f1_session_configurable(
     schedule_loader = ScheduleLoader()
 
     # Determine scope
-    if session_type:
-        # Mode 1: Single session
-        scope = "single_session"
-        sessions_to_ingest = [(event_name, session_type)]
-        context.log.info(f"Mode: Single Session - {year} {event_name} {session_type}")
-        dagster_logger.info(
-            "Mode: Single Session - %d %s %s", year, event_name, session_type
-        )
 
-    elif event_name:
-        # Mode 2: Whole event
-        scope = "whole_event"
+    # One Session Type is provided (eg. ["R"])
+    if session_type and len(session_type) == 1:
+        # One event name is also provided (eg. ["Italian Grand Prix"])
+        if event_name and len(event_name) == 1:
+            # Mode 1: Single session from one grand prix event
+            scope = "one_event_one_session"
+            sessions_to_ingest = [f"{event_name}|{session_type}"]
+            context.log.info(
+                f"Mode: One Event One Session - {year} {event_name} {session_type}"
+            )
+            dagster_logger.info(
+                "Mode: One Event One Session - %d %s %s", year, event_name, session_type
+            )
 
-        # Get available sessions for this event
-        if session_types:
-            # User specified which sessions to ingest
-            sessions = session_types
+        elif event_name and len(event_name) > 1:
+            # Mode 2: Same session type from multiple grand prix event
+            scope = "multiple_events_one_session"
+            sessions_to_ingest = [f"{e}|{session_type}" for e in event_name]
+            context.log.info(
+                f"Mode: Multiple Events, One Session - {year} {event_name} {session_type} (Total: {len(sessions_to_ingest)})"
+            )
+            dagster_logger.info(
+                "Mode: Multiple Events, One Session - %d %s %s  (Total: %d)",
+                year,
+                event_name,
+                session_type,
+                len(sessions_to_ingest),
+            )
+
         else:
-            # Get all sessions for this event
-            sessions = schedule_loader.get_sessions_to_load(year, event_name)
+            # Mode 3: Same session type from all grand prix events of the season
+            scope = "all_events_one_session"
 
-        sessions_to_ingest = [(event_name, s) for s in sessions]
-        context.log.info(f"Mode: Whole Event - {year} {event_name}")
-        context.log.info(f"  Sessions to ingest: {sessions}")
+            # Get all events for the year
+            events = schedule_loader.get_events_for_ingestion(year)
+            sessions_to_ingest = []
 
-        dagster_logger.info("Mode: Whole Event - %d %s", year, event_name)
-        dagster_logger.info("  Sessions to ingest: %s", sessions)
+            for event in events:
+                sessions_to_ingest.append(f"{event}|{session_type}")
+
+            context.log.info(
+                f"Mode: All Events, One Session - {session_type} files from all GPs of {year} (Total: {len(sessions_to_ingest)})"
+            )
+            dagster_logger.info(
+                "Mode: All Events, One Session - %s files from all GPs of %d (Total: %d)",
+                session_type,
+                year,
+                len(sessions_to_ingest),
+            )
+
+    elif session_type and len(session_type) > 1:
+        # One event name is also provided (eg. ["Italian Grand Prix"])
+        if event_name and len(event_name) == 1:
+            # Mode 4: Multiple sessions from one grand prix event
+            scope = "one_event_multiple_sessions"
+            sessions_to_ingest = [f"{event_name}|{s}" for s in session_type]
+            context.log.info(
+                f"Mode: One Event, Multiple Sessions - {year} {event_name} {session_type}"
+            )
+            dagster_logger.info(
+                "Mode: One Event, Multiple Sessions - %d %s %s",
+                year,
+                event_name,
+                session_type,
+            )
+
+        elif event_name and len(event_name) > 1:
+            # Mode 5: Multiple session type from multiple grand prix event
+            scope = "multiple_events_multiple_sessions"
+            sessions_to_ingest = [f"{e}|{s}" for e in event_name for s in session_type]
+            context.log.info(
+                f"Mode: Multiple Events, Multiple Sessions - {year} {event_name} {session_type} (Total: {len(sessions_to_ingest)})"
+            )
+            dagster_logger.info(
+                "Mode: Multiple Events, Multiple Sessions - %d %s %s (Total: %d)",
+                year,
+                event_name,
+                session_type,
+                len(sessions_to_ingest),
+            )
+
+        else:
+            # Mode 6: Multiple session type from all grand prix events of the season
+            scope = "all_events_multiple_sessions"
+
+            # Get all events for the year
+            events = schedule_loader.get_events_for_ingestion(year)
+            sessions_to_ingest = []
+
+            for event in events:
+                sessions_to_ingest.extend([f"{event}|{s}" for s in session_type])
+
+            context.log.info(
+                f"Mode: All Events, Multiple Sessions - {session_type} files from all GPs of {year} (Total: {len(sessions_to_ingest)})"
+            )
+            dagster_logger.info(
+                "Mode: All Events, Multiple Sessions - %s files from all GPs of %d (Total: %d)",
+                session_type,
+                year,
+                len(sessions_to_ingest),
+            )
 
     else:
-        # Mode 3: Whole season
-        scope = "whole_season"
+        # One event name is also provided (eg. ["Italian Grand Prix"])
+        if event_name and len(event_name) == 1:
+            # Mode 7: All sessions from one grand prix event
+            scope = "one_event_all_sessions"
 
-        # Get all events for the year
-        events = schedule_loader.get_events_for_ingestion(year)
+            # Get all sessions for this event from schedule loader
+            sessions = schedule_loader.get_sessions_to_load(year, event_name)
 
-        sessions_to_ingest = []
-        for event in events:
-            # Get sessions for each event
-            if session_types:
-                # User specified which session types to ingest
-                sessions = session_types
-            else:
-                # Get all sessions for this event
+            sessions_to_ingest = [f"{event_name}|{s}" for s in sessions]
+            num_of_sessions = len(sessions_to_ingest)
+
+            context.log.info(
+                f"Mode: One Event, All Sessions for - {year} {event_name} (Total: {num_of_sessions})"
+            )
+            dagster_logger.info(
+                "Mode: One Event, All Sessions for - %d %s (Total: %d)",
+                year,
+                event_name,
+                num_of_sessions,
+            )
+
+        elif event_name and len(event_name) > 1:
+            # Mode 8: All session type from multiple grand prix event
+            scope = "multiple_events_all_sessions"
+
+            sessions_to_ingest = []
+
+            for event in event_name:
+                # Get the session to ingest for the event
+                sessions = schedule_loader.get_sessions_to_load(year, event)
+                sessions_to_ingest.extend([f"{event}|{s}" for s in sessions])
+
+            context.log.info(
+                f"Mode: Multiple Events, All Sessions for - {year} {event_name} (Total: {len(sessions_to_ingest)})"
+            )
+            dagster_logger.info(
+                "Mode: Multiple Events, All Sessions for - %d %s (Total: %d)",
+                year,
+                event_name,
+                len(sessions_to_ingest),
+            )
+
+        else:
+            # Mode 9: Multiple session type from all grand prix events of the season
+            scope = "whole_season"
+
+            # Get all events for the year
+            events = schedule_loader.get_events_for_ingestion(year)
+
+            sessions_to_ingest = []
+
+            for event in events:
+                # Get the session for every event iteratively
                 sessions = schedule_loader.get_sessions_to_load(year, event)
 
-            for session in sessions:
-                sessions_to_ingest.append((event, session))
+                for session in sessions:
+                    sessions_to_ingest.append(f"{event}|{session}")
 
-        context.log.info(f"Mode: Whole Season - {year}")
-        context.log.info(f"  Events: {len(events)}")
-        context.log.info(f"  Total sessions: {len(sessions_to_ingest)}")
+            context.log.info(f"Mode: Whole Season - {year}")
+            context.log.info(f"  Events: {len(events)}")
+            context.log.info(f"  Total sessions: {len(sessions_to_ingest)}")
 
-        dagster_logger.info("Mode: Whole Season - %d", year)
-        dagster_logger.info("  Events: %d", len(events))
-        dagster_logger.info("  Total sessions: %d", len(sessions_to_ingest))
+            dagster_logger.info(
+                "Mode: Whole Season - %d",
+                year,
+            )
+            dagster_logger.info("  Events: %d", len(events))
+            dagster_logger.info("  Total sessions: %d", len(sessions_to_ingest))
 
     # Ingest all sessions
     results = []
@@ -340,7 +457,9 @@ def f1_session_configurable(
     dagster_logger.info("Starting ingestion: %d sessions", len(sessions_to_ingest))
     dagster_logger.info("=" * 70)
 
-    for idx, (event, session) in enumerate(sessions_to_ingest, 1):
+    for idx, partition_key in enumerate(sessions_to_ingest, 1):
+        event, session = partition_key.split("|")
+
         context.log.info(f"[{idx}/{len(sessions_to_ingest)}] {year} {event} {session}")
         dagster_logger.info(
             "[%d/%d] %d %s %s", idx, len(sessions_to_ingest), year, event, session
@@ -350,8 +469,8 @@ def f1_session_configurable(
             # Load session data
             session_data = session_loader.load_session_data(
                 year=year,
-                event_name=event_name,
-                session_type=session_type,
+                event_name=event,
+                session_type=session,
                 save_to_storage=True,
                 force_refresh=False,
             )
@@ -406,10 +525,9 @@ def f1_session_configurable(
         "success_rate": f"{(successful / len(sessions_to_ingest) * 100):.1f}%",
     }
 
-    if event_name:
-        metadata["event"] = event_name
-    if session_type:
-        metadata["session_type"] = session_type
+    metadata["event"] = event_name if event_name else "All events"
+
+    metadata["session_type"] = session_type if session_type else "All sessions"
 
     # Create summary table
     summary_rows = []
