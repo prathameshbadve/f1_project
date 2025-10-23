@@ -17,7 +17,7 @@ on:
                 default: ""
 
             session_type:
-                description: "Session type (R, Q, S, FP1, FP2, FP3) - Leave empty for all sessions"
+                description: "Session type (R, Q, S, SS, SQ, FP1, FP2, FP3) - Leave empty for all sessions"
                 required: false
                 type: string
                 default: ""
@@ -37,17 +37,8 @@ jobs:
         steps:
             - name: 🏁 Job Configuration Summary
               run: |
-                  echo "### 🏎️ F1 Data Ingestion Configuration" >> $GITHUB_STEP_SUMMARY
-                  echo "" >> $GITHUB_STEP_SUMMARY
-                  echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
-                  echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
-                  echo "| **Year** | ${{ inputs.year }} |" >> $GITHUB_STEP_SUMMARY
-                  echo "| **Event** | ${{ inputs.event_name || 'All Events (Full Season)' }} |" >> $GITHUB_STEP_SUMMARY
-                  echo "| **Session** | ${{ inputs.session_type || 'All Sessions' }} |" >> $GITHUB_STEP_SUMMARY
-                  echo "| **Dry Run** | ${{ inputs.dry_run }} |" >> $GITHUB_STEP_SUMMARY
-                  echo "" >> $GITHUB_STEP_SUMMARY
-
                   # Determine scope
+
                   if [ -n "${{ inputs.session_type }}" ]; then
                     SCOPE="Single Session"
                   elif [ -n "${{ inputs.event_name }}" ]; then
@@ -56,6 +47,14 @@ jobs:
                     SCOPE="Full Season (All Events & Sessions)"
                   fi
 
+                  echo "### 🏎️ F1 Data Ingestion Configuration" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+                  echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+                  echo "| **Year** | ${{ inputs.year }} |" >> $GITHUB_STEP_SUMMARY
+                  echo "| **Event** | ${{ inputs.event_name || 'All Events (Full Season)' }} |" >> $GITHUB_STEP_SUMMARY
+                  echo "| **Session** | ${{ inputs.session_type || 'All Sessions' }} |" >> $GITHUB_STEP_SUMMARY
+                  echo "| **Dry Run** | ${{ inputs.dry_run }} |" >> $GITHUB_STEP_SUMMARY
                   echo "| **Scope** | ${SCOPE} |" >> $GITHUB_STEP_SUMMARY
                   echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -174,7 +173,7 @@ jobs:
 
                   # Logging
                   LOG_DIR: /tmp/monitoring/logs
-                  LOG_LEVEL: WARNING
+                  LOG_LEVEL: INFO
 
               run: |
                   echo "Starting F1 data ingestion..."
@@ -286,18 +285,22 @@ jobs:
                   echo "### 📊 Execution Results" >> $GITHUB_STEP_SUMMARY
                   echo "" >> $GITHUB_STEP_SUMMARY
 
-                  if [ "${{ steps.ingestion.outcome }}" == "success" ]; then
-                    echo "✅ **Status**: Success" >> $GITHUB_STEP_SUMMARY
-                    echo "" >> $GITHUB_STEP_SUMMARY
-                    echo "Data has been successfully ingested to:" >> $GITHUB_STEP_SUMMARY
-                    echo "- 🪣 **S3 Bucket**: \`pb-f1-raw-data\`" >> $GITHUB_STEP_SUMMARY
-                    echo "- 🗄️ **Database**: Supabase (\`f1_prod_data\` schema)" >> $GITHUB_STEP_SUMMARY
+                  if not [ "${{ inputs.dry_run }}" ]; then
+                    if [ "${{ steps.ingestion.outcome }}" == "success" ]; then
+                        echo "✅ **Status**: Success" >> $GITHUB_STEP_SUMMARY
+                        echo "" >> $GITHUB_STEP_SUMMARY
+                        echo "Data has been successfully ingested to:" >> $GITHUB_STEP_SUMMARY
+                        echo "- 🪣 **S3 Bucket**: \`pb-f1-raw-data\`" >> $GITHUB_STEP_SUMMARY
+                        echo "- 🗄️ **Database**: Supabase (\`f1_prod_data\` schema)" >> $GITHUB_STEP_SUMMARY
+                    else
+                        echo "❌ **Status**: Failed" >> $GITHUB_STEP_SUMMARY
+                        echo "" >> $GITHUB_STEP_SUMMARY
+                        echo "Please check the job logs for details." >> $GITHUB_STEP_SUMMARY
+                        echo "Logs have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
+                    fi
                   else
-                    echo "❌ **Status**: Failed" >> $GITHUB_STEP_SUMMARY
+                    echo "✅ Dry Run Completed" >> $GITHUB_STEP_SUMMARY
                     echo "" >> $GITHUB_STEP_SUMMARY
-                    echo "Please check the job logs for details." >> $GITHUB_STEP_SUMMARY
-                    echo "Logs have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
-                  fi
 
                   echo "" >> $GITHUB_STEP_SUMMARY
                   echo "**Run ID**: \`${{ github.run_id }}\`" >> $GITHUB_STEP_SUMMARY

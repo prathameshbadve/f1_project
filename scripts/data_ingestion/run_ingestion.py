@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Script to run F1 data ingestion jobs.
 Can be used locally or in CI/CD environments.
@@ -25,6 +24,12 @@ from typing import Optional
 from dagster import DagsterInstance, execute_job
 from dagster_project import defs
 
+from config.logging import setup_logging, get_logger
+
+# Setup logging
+setup_logging()
+logger = get_logger("data_ingestion.pipeline")
+
 
 def run_ingestion(
     year: int,
@@ -37,40 +42,40 @@ def run_ingestion(
 
     Args:
         year: Season year (e.g., 2024)
-        event_name: Event name (e.g., "Italian Grand Prix"), None for full season
-        session_type: Session type (R, Q, S, etc.), None for all sessions
+        event_name: Event name (e.g., ["Italian Grand Prix"], ["Italian Grand Prix", "Monaco Grand Prix"]), None for full season
+        session_type: Session type (["R"], ["R", "Q"], etc.), None for all sessions
         dry_run: If True, validate only without ingesting data
 
     Returns:
         True if successful, False otherwise
     """
 
-    print("\n" + "=" * 60)
-    print("F1 Data Ingestion Job")
-    print("=" * 60)
-    print(f"Year: {year}")
-    print(f"Event: {event_name or 'All Events'}")
-    print(f"Session: {session_type or 'All Sessions'}")
-    print(f"Dry Run: {dry_run}")
-    print("=" * 60 + "\n")
+    logger.info("%s", "\n" + "=" * 60)
+    logger.info("F1 Data Ingestion Job")
+    logger.info("=" * 60)
+    logger.info("Year: %d", year)
+    logger.info("Event: %s", event_name or "All Events")
+    logger.info("Session: %s", session_type or "All Sessions")
+    logger.info("Dry Run: %s", dry_run)
+    logger.info("%s", "=" * 60 + "\n")
 
     if dry_run:
-        print("🔍 DRY RUN MODE - Validation Only\n")
-        print("This would ingest:")
+        logger.info("🔍 DRY RUN MODE - Validation Only")
+        logger.info("This would ingest:")
         if session_type:
-            print(f"  ✓ Single session: {year} {event_name} {session_type}")
+            logger.info("  ✓ Single session: %d %s %s", year, event_name, session_type)
         elif event_name:
-            print(f"  ✓ All sessions from: {year} {event_name}")
+            logger.info("  ✓ All sessions from: %d %s", year, event_name)
         else:
-            print(f"  ✓ Full season: All events from {year}")
-        print("\n✅ Dry run validation complete - no data ingested")
+            logger.info("  ✓ Full season: All events from %d", year)
+        logger.info("✅ Dry run validation complete - no data ingested")
         return True
 
     # Get the configurable job
     try:
         job = defs.get_job_def("f1_configurable_session_job")
     except Exception as e:  # pylint: disable=broad-except
-        print(f"❌ Error loading job definition: {e}")
+        logger.error("❌ Error loading job definition: %s", str(e))
         return False
 
     # Build config
@@ -92,27 +97,26 @@ def run_ingestion(
             session_type
         )
 
-    print("Executing job with config:")
-    print(f"  Year: {year}")
+    logger.info("Executing job with config:")
+    logger.info("  Year: %d", year)
     if event_name:
-        print(f"  Event: {event_name}")
+        logger.info("  Event: %s", event_name)
     if session_type:
-        print(f"  Session: {session_type}")
-    print()
+        logger.info("  Session: %s", session_type)
 
     # Execute the job
     try:
         result = execute_job(job, instance=DagsterInstance.get(), run_config=config)
 
         if result.success:
-            print("\n✅ Job completed successfully!")
+            logger.info("✅ Job completed successfully!")
             return True
 
-        print("\n❌ Job failed!")
+        logger.warning("❌ Job failed!")
         return False
 
     except Exception as e:  # pylint: disable=broad-except
-        print(f"\n❌ Error executing job: {e}")
+        logger.error("\n❌ Error executing job: %s", str(e))
 
         traceback.print_exc()
         return False
@@ -170,7 +174,7 @@ Examples:
 
     # Validate year
     if args.year < 2018 or args.year > 2025:
-        print(f"❌ Invalid year: {args.year}. Must be between 2018 and 2025.")
+        logger.warning("❌ Invalid year: %d. Must be between 2018 and 2025.", args.year)
         sys.exit(1)
 
     # Run ingestion
