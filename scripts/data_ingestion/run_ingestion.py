@@ -1,5 +1,3 @@
-# pylint: disable=line-too-long
-
 """
 Script to run F1 data ingestion jobs.
 Can be used locally or in CI/CD environments.
@@ -35,8 +33,10 @@ import sys
 import traceback
 from typing import Optional, List
 
-from dagster import DagsterInstance, execute_job
-from dagster_project import defs
+from dagster import DagsterInstance, materialize
+
+# Import the asset directly
+from dagster_project.assets.season_ingestion import f1_session_configurable
 
 from config.logging import setup_logging, get_logger
 
@@ -76,7 +76,7 @@ def run_ingestion(
     """
 
     logger.info("%s", "\n" + "=" * 70)
-    logger.info("F1 Data Ingestion Job")
+    logger.info("F1 Data Ingestion")
     logger.info("=" * 70)
     logger.info("Year: %d", year)
     logger.info("Event(s): %s", event_name if event_name else "All Events")
@@ -155,15 +155,8 @@ def run_ingestion(
         logger.info("✅ Dry run validation complete - no data ingested")
         return True
 
-    # Get the configurable job
-    try:
-        job = defs.get_job_def("f1_configurable_session")
-    except Exception as e:  # pylint: disable=broad-except
-        logger.error("❌ Error loading job definition: %s", str(e))
-        return False
-
-    # Build config
-    config = {
+    # Build run config for the asset
+    run_config = {
         "ops": {
             "f1_session_configurable": {
                 "config": {
@@ -175,32 +168,41 @@ def run_ingestion(
 
     # Add optional parameters as lists
     if event_name:
-        config["ops"]["f1_session_configurable"]["config"]["event_name"] = event_name
+        run_config["ops"]["f1_session_configurable"]["config"]["event_name"] = (
+            event_name
+        )
     if session_type:
-        config["ops"]["f1_session_configurable"]["config"]["session_type"] = (
+        run_config["ops"]["f1_session_configurable"]["config"]["session_type"] = (
             session_type
         )
 
-    logger.info("Executing job with config:")
+    logger.info("Materializing asset with config:")
     logger.info("  Year: %d", year)
     if event_name:
         logger.info("  Event(s): %s", event_name)
     if session_type:
         logger.info("  Session(s): %s", session_type)
 
-    # Execute the job
+    # Materialize the asset
     try:
-        result = execute_job(job, instance=DagsterInstance.get(), run_config=config)
+        logger.info("Starting asset materialization...")
+
+        # Materialize using the imported asset
+        result = materialize(
+            [f1_session_configurable],
+            instance=DagsterInstance.get(),
+            run_config=run_config,
+        )
 
         if result.success:
-            logger.info("✅ Job completed successfully!")
+            logger.info("✅ Asset materialization completed successfully!")
             return True
 
-        logger.warning("❌ Job failed!")
+        logger.warning("❌ Asset materialization failed!")
         return False
 
     except Exception as e:  # pylint: disable=broad-except
-        logger.error("\n❌ Error executing job: %s", str(e))
+        logger.error("\n❌ Error materializing asset: %s", str(e))
         traceback.print_exc()
         return False
 
@@ -209,7 +211,7 @@ def main():
     """Parse command line arguments and run ingestion."""
 
     parser = argparse.ArgumentParser(
-        description="Run F1 data ingestion job with flexible scope",
+        description="Run F1 data ingestion with flexible scope",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
