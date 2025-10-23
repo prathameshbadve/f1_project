@@ -301,6 +301,7 @@ jobs:
                   else
                     echo "✅ Dry Run Completed" >> $GITHUB_STEP_SUMMARY
                     echo "" >> $GITHUB_STEP_SUMMARY
+                  fi
 
                   echo "" >> $GITHUB_STEP_SUMMARY
                   echo "**Run ID**: \`${{ github.run_id }}\`" >> $GITHUB_STEP_SUMMARY
