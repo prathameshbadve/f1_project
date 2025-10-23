@@ -6,13 +6,14 @@ Instead of creating 100+ individual assets, we create one partitioned asset
 that can handle any session based on the partition key.
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 
-from dagster import asset, AssetExecutionContext, Output, MetadataValue
+from dagster import asset, AssetExecutionContext, Output, MetadataValue, Config
 import pandas as pd
 
 from dagster_project.partitions import f1_2024_sessions_partitions
 from src.data_ingestion.session_data_loader import SessionLoader
+from src.data_ingestion.schedule_loader import ScheduleLoader
 from src.data_ingestion.storage_client import StorageClient
 
 from config.logging import setup_logging, get_logger
@@ -24,6 +25,11 @@ from config.logging import setup_logging, get_logger
 
 setup_logging()
 dagster_logger = get_logger("data_ingestion.dagster")
+
+
+# ============================================================================
+# PARTITIONED ASSET (2024 Season)
+# ============================================================================
 
 
 @asset(
@@ -195,6 +201,257 @@ def f1_2024_session_raw(context: AssetExecutionContext) -> Output[Dict[str, Any]
                 "error_message": str(e),
             },
         )
+
+
+# ============================================================================
+# CONFIGURABLE ASSET (Any Year/Event/Session)
+# ============================================================================
+
+
+class F1SessionConfig(Config):
+    """
+    Configuration for ingesting F1 sessions with flexible scope.
+
+    Supports three modes:
+    1. Single session: Provide year + event_name + session_type
+    2. Whole event: Provide year + event_name (ingests all sessions)
+    3. Whole season: Provide only year (ingests all events and sessions)
+    """
+
+    year: int
+    event_name: str = None
+    session_type: str = None
+    session_types: Optional[List[str]] = None  # Override which sessions to ingest
+
+
+@asset(
+    group_name="raw_configurable",
+    compute_kind="fastf1",
+    description="Ingest any F1 session by providing year, event_name, and session_type as config",
+)
+def f1_session_configurable(
+    context: AssetExecutionContext,
+    config: F1SessionConfig,
+) -> Output[Dict[str, Any]]:
+    """
+    Ingest F1 sessions with flexible configuration.
+
+    Three usage modes:
+
+    1. Single Session:
+       config = {"year": 2023, "event_name": "Monaco Grand Prix", "session_type": "R"}
+
+    2. Whole Event (all sessions):
+       config = {"year": 2023, "event_name": "Monaco Grand Prix"}
+
+    3. Whole Season (all events and sessions):
+       config = {"year": 2023}
+
+    4. Custom session types for event:
+       config = {"year": 2023, "event_name": "Monaco Grand Prix", "session_types": ["Q", "R"]}
+
+    5. Custom session types for season:
+       config = {"year": 2023, "session_types": ["R"]}  # Only races
+    """
+
+    year = config.year
+    event_name = config.event_name
+    session_type = config.session_type
+    session_types = config.session_types
+
+    context.log.info(f"Starting ingestion: {year} {event_name} {session_type}")
+    context.log.info(f"Config: year={year}, event={event_name}, session={session_type}")
+
+    dagster_logger.info("Starting ingestion: %d %s %s", year, event_name, session_type)
+    dagster_logger.info(
+        "Config: year=%d, event=%s session=%s", year, event_name, session_type
+    )
+
+    # Initialize loaders
+    session_loader = SessionLoader()
+    schedule_loader = ScheduleLoader()
+
+    # Determine scope
+    if session_type:
+        # Mode 1: Single session
+        scope = "single_session"
+        sessions_to_ingest = [(event_name, session_type)]
+        context.log.info(f"Mode: Single Session - {year} {event_name} {session_type}")
+        dagster_logger.info(
+            "Mode: Single Session - %d %s %s", year, event_name, session_type
+        )
+
+    elif event_name:
+        # Mode 2: Whole event
+        scope = "whole_event"
+
+        # Get available sessions for this event
+        if session_types:
+            # User specified which sessions to ingest
+            sessions = session_types
+        else:
+            # Get all sessions for this event
+            sessions = schedule_loader.get_sessions_to_load(year, event_name)
+
+        sessions_to_ingest = [(event_name, s) for s in sessions]
+        context.log.info(f"Mode: Whole Event - {year} {event_name}")
+        context.log.info(f"  Sessions to ingest: {sessions}")
+
+        dagster_logger.info("Mode: Whole Event - %d %s", year, event_name)
+        dagster_logger.info("  Sessions to ingest: %s", sessions)
+
+    else:
+        # Mode 3: Whole season
+        scope = "whole_season"
+
+        # Get all events for the year
+        events = schedule_loader.get_events_for_ingestion(year)
+
+        sessions_to_ingest = []
+        for event in events:
+            # Get sessions for each event
+            if session_types:
+                # User specified which session types to ingest
+                sessions = session_types
+            else:
+                # Get all sessions for this event
+                sessions = schedule_loader.get_sessions_to_load(year, event)
+
+            for session in sessions:
+                sessions_to_ingest.append((event, session))
+
+        context.log.info(f"Mode: Whole Season - {year}")
+        context.log.info(f"  Events: {len(events)}")
+        context.log.info(f"  Total sessions: {len(sessions_to_ingest)}")
+
+        dagster_logger.info("Mode: Whole Season - %d", year)
+        dagster_logger.info("  Events: %d", len(events))
+        dagster_logger.info("  Total sessions: %d", len(sessions_to_ingest))
+
+    # Ingest all sessions
+    results = []
+    successful = 0
+    failed = 0
+
+    context.log.info("=" * 70)
+    context.log.info(f"Starting ingestion: {len(sessions_to_ingest)} sessions")
+    context.log.info("=" * 70)
+
+    dagster_logger.info("=" * 70)
+    dagster_logger.info("Starting ingestion: %d sessions", len(sessions_to_ingest))
+    dagster_logger.info("=" * 70)
+
+    for idx, (event, session) in enumerate(sessions_to_ingest, 1):
+        context.log.info(f"[{idx}/{len(sessions_to_ingest)}] {year} {event} {session}")
+        dagster_logger.info(
+            "[%d/%d] %d %s %s", idx, len(sessions_to_ingest), year, event, session
+        )
+
+        try:
+            # Load session data
+            session_data = session_loader.load_session_data(
+                year=year,
+                event_name=event_name,
+                session_type=session_type,
+                save_to_storage=True,
+                force_refresh=False,
+            )
+
+            # Log data types loaded
+            loaded_types = [k for k, v in session_data.items() if v is not None]
+            context.log.info(f"  ✅ Success - Loaded: {', '.join(loaded_types)}")
+            dagster_logger.info("  ✅ Success - Loaded: %s", ", ".join(loaded_types))
+
+            results.append(
+                {
+                    "event": event,
+                    "session": session,
+                    "success": True,
+                    "data_types": loaded_types,
+                }
+            )
+            successful += 1
+
+        except Exception as e:  # pylint: disable=broad-except
+            context.log.error(f"  ❌ Failed: {str(e)}")
+            dagster_logger.error("  ❌ Failed: %s", str(e))
+            results.append(
+                {
+                    "event": event,
+                    "session": session,
+                    "success": False,
+                    "error": str(e),
+                }
+            )
+            failed += 1
+
+    context.log.info("=" * 70)
+    context.log.info("Ingestion complete!")
+    context.log.info(f"  Successful: {successful}/{len(sessions_to_ingest)}")
+    context.log.info(f"  Failed: {failed}/{len(sessions_to_ingest)}")
+    context.log.info("=" * 70)
+
+    dagster_logger.info("=" * 70)
+    dagster_logger.info("Ingestion complete!")
+    dagster_logger.info("  Successful: %d/%d", successful, len(sessions_to_ingest))
+    dagster_logger.info("  Failed: %d/%d", failed, len(sessions_to_ingest))
+    dagster_logger.info("=" * 70)
+
+    # Build metadata
+    metadata = {
+        "year": year,
+        "scope": scope,
+        "total_sessions": len(sessions_to_ingest),
+        "successful": successful,
+        "failed": failed,
+        "success_rate": f"{(successful / len(sessions_to_ingest) * 100):.1f}%",
+    }
+
+    if event_name:
+        metadata["event"] = event_name
+    if session_type:
+        metadata["session_type"] = session_type
+
+    # Create summary table
+    summary_rows = []
+    for r in results:
+        status = "✅" if r["success"] else "❌"
+        summary_rows.append(
+            {
+                "Status": status,
+                "Event": r["event"],
+                "Session": r["session"],
+                "Result": "Success" if r["success"] else r.get("error", "Failed")[:50],
+            }
+        )
+
+    if len(summary_rows) <= 20:
+        # Show full table for small ingestions
+        summary_df = pd.DataFrame(summary_rows)
+        metadata["ingestion_summary"] = MetadataValue.md(
+            summary_df.to_markdown(index=False)
+        )
+    else:
+        # Show just stats for large ingestions
+        metadata["events_ingested"] = len(
+            set(r["event"] for r in results if r["success"])
+        )
+        metadata["sample_results"] = MetadataValue.md(
+            pd.DataFrame(summary_rows[:10]).to_markdown(index=False)
+            + f"\n\n... and {len(summary_rows) - 10} more sessions"
+        )
+
+    return Output(
+        value={
+            "year": year,
+            "scope": scope,
+            "total_sessions": len(sessions_to_ingest),
+            "successful": successful,
+            "failed": failed,
+            "results": results,
+        },
+        metadata=metadata,
+    )
 
 
 # ============================================================================

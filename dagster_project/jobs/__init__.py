@@ -154,8 +154,6 @@
 #             "type": "specific-event",
 #         },
 #     )
-
-
 """
 Dagster jobs for F1 data pipeline.
 
@@ -199,30 +197,35 @@ f1_2024_season_all_sessions_job = define_asset_job(
 )
 
 
-# f1_2024_season_races_only_job = define_asset_job(
-#     name="f1_2024_season_races_only",
-#     description="Ingest only Race sessions for 2024 season (~24 races)",
-#     selection=AssetSelection.groups("raw_2024_season"),
-#     # Note: partition-key filtering (e.g. selecting only sessions that end with "|R")
-#     # should be applied via partition-aware ops, schedules, or runtime filters,
-#     # since KeysAssetSelection does not expose with_partition_key_filter.
-#     tags={
-#         "year": "2024",
-#         "type": "full_season",
-#         "scope": "races_only",
-#     },
-# )
+# ============================================================================
+# CONFIGURABLE JOB (Any Year/Event/Session)
+# ============================================================================
 
-# f1_2024_season_quali_and_races_job = define_asset_job(
-#     name="f1_2024_season_quali_and_races",
-#     description="Ingest Qualifying and Race sessions for 2024 season (~48 sessions)",
-#     selection=AssetSelection.groups("raw_2024_season"),
-#     # Note: partition-key filtering (e.g. selecting sessions that end with "|R" or "|Q")
-#     # should be applied via partition-aware ops, schedules, or runtime filters,
-#     # since KeysAssetSelection does not expose with_partition_key_filter.
-#     tags={
-#         "year": "2024",
-#         "type": "full_season",
-#         "scope": "qualifying_and_races",
-#     },
-# )
+
+f1_configurable_session_job = define_asset_job(
+    name="f1_configurable_session",
+    description="Ingest any F1 session by providing year, event_name, and session_type as config",
+    selection=AssetSelection.groups("raw_configurable"),
+    tags={
+        "type": "configurable",
+        "scope": "single_session",
+    },
+)
+
+
+# Note: To use the configurable job:
+# 1. In Dagster UI: Jobs → f1_configurable_session → Launch Run
+# 2. Provide config:
+#    {
+#      "ops": {
+#        "f1_session_configurable": {
+#          "config": {
+#            "year": 2023,
+#            "event_name": "Monaco Grand Prix",
+#            "session_type": "R"
+#          }
+#        }
+#      }
+#    }
+#
+# OR directly materialize the asset with config in the Assets tab
