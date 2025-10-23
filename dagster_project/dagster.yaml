@@ -22,7 +22,9 @@ run_launcher:
 # Run coordinator - manages run queuing and concurrency
 run_coordinator:
   module: dagster._core.run_coordinator
-  class: DefaultRunCoordinator
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 4 # Run 10 sessions simultaneously
 
 # Compute logs - where to store stdout/stderr from runs
 compute_logs:
