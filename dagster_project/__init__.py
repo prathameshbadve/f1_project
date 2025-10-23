@@ -89,7 +89,10 @@ from dagster import Definitions, load_assets_from_modules
 
 from dagster_project import assets
 from dagster_project.resources import storage_resource
-from dagster_project.jobs import italian_gp_2024_weekend_job
+from dagster_project.jobs import (
+    italian_gp_2024_weekend_job,
+    f1_2024_season_all_sessions_job,
+)
 
 
 # Load all assets from the assets module
@@ -102,7 +105,10 @@ all_assets = load_assets_from_modules([assets])
 defs = Definitions(
     assets=all_assets,
     jobs=[
+        # Race weekend jobs
         italian_gp_2024_weekend_job,
+        # Season jobs
+        f1_2024_season_all_sessions_job,
     ],
     resources={
         # External system connections

@@ -209,7 +209,7 @@ def ingest_session_asset(
 def italian_gp_2024_fp1(context: AssetExecutionContext) -> Output[Dict[str, Any]]:
     """Ingest Italian GP 2024 - Free Practice 1"""
 
-    return ingest_session_asset(context, 2024, "Italian Grand Prix", "FP1")
+    return ingest_session_asset(context, 2024, "Italian Grand Prix", "Practice 1")
 
 
 @asset(
@@ -220,7 +220,7 @@ def italian_gp_2024_fp1(context: AssetExecutionContext) -> Output[Dict[str, Any]
 def italian_gp_2024_fp2(context: AssetExecutionContext) -> Output[Dict[str, Any]]:
     """Ingest Italian GP 2024 - Free Practice 2"""
 
-    return ingest_session_asset(context, 2024, "Italian Grand Prix", "FP2")
+    return ingest_session_asset(context, 2024, "Italian Grand Prix", "Practice 2")
 
 
 @asset(
@@ -231,7 +231,7 @@ def italian_gp_2024_fp2(context: AssetExecutionContext) -> Output[Dict[str, Any]
 def italian_gp_2024_fp3(context: AssetExecutionContext) -> Output[Dict[str, Any]]:
     """Ingest Italian GP 2024 - Free Practice 3"""
 
-    return ingest_session_asset(context, 2024, "Italian Grand Prix", "FP3")
+    return ingest_session_asset(context, 2024, "Italian Grand Prix", "Practice 3")
 
 
 @asset(
@@ -244,7 +244,7 @@ def italian_gp_2024_qualifying(
 ) -> Output[Dict[str, Any]]:
     """Ingest Italian GP 2024 - Qualifying"""
 
-    return ingest_session_asset(context, 2024, "Italian Grand Prix", "Q")
+    return ingest_session_asset(context, 2024, "Italian Grand Prix", "Qualifying")
 
 
 @asset(
@@ -257,4 +257,4 @@ def italian_gp_2024_race(
 ) -> Output[Dict[str, Any]]:
     """Ingest Italian GP 2024 - Race"""
 
-    return ingest_session_asset(context, 2024, "Italian Grand Prix", "R")
+    return ingest_session_asset(context, 2024, "Italian Grand Prix", "Race")

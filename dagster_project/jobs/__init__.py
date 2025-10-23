@@ -180,3 +180,49 @@ italian_gp_2024_weekend_job = define_asset_job(
         "type": "race_weekend",
     },
 )
+
+
+# ============================================================================
+# SEASON JOBS
+# ============================================================================
+
+
+f1_2024_season_all_sessions_job = define_asset_job(
+    name="f1_2024_season_all_sessions",
+    description="Ingest ALL sessions for 2024 season (100+ sessions)",
+    selection=AssetSelection.groups("raw_2024_season"),
+    tags={
+        "year": "2024",
+        "type": "full_season",
+        "scope": "all_sessions",
+    },
+)
+
+
+# f1_2024_season_races_only_job = define_asset_job(
+#     name="f1_2024_season_races_only",
+#     description="Ingest only Race sessions for 2024 season (~24 races)",
+#     selection=AssetSelection.groups("raw_2024_season"),
+#     # Note: partition-key filtering (e.g. selecting only sessions that end with "|R")
+#     # should be applied via partition-aware ops, schedules, or runtime filters,
+#     # since KeysAssetSelection does not expose with_partition_key_filter.
+#     tags={
+#         "year": "2024",
+#         "type": "full_season",
+#         "scope": "races_only",
+#     },
+# )
+
+# f1_2024_season_quali_and_races_job = define_asset_job(
+#     name="f1_2024_season_quali_and_races",
+#     description="Ingest Qualifying and Race sessions for 2024 season (~48 sessions)",
+#     selection=AssetSelection.groups("raw_2024_season"),
+#     # Note: partition-key filtering (e.g. selecting sessions that end with "|R" or "|Q")
+#     # should be applied via partition-aware ops, schedules, or runtime filters,
+#     # since KeysAssetSelection does not expose with_partition_key_filter.
+#     tags={
+#         "year": "2024",
+#         "type": "full_season",
+#         "scope": "qualifying_and_races",
+#     },
+# )
