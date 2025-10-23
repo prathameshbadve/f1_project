@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 from dagster import ConfigurableResource  # , InitResourceContext
 from minio import Minio
+
 # from psycopg2.pool import SimpleConnectionPool
 # from sqlalchemy import create_engine
 

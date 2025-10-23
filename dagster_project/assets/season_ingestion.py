@@ -139,9 +139,9 @@ def f1_2024_session_raw(context: AssetExecutionContext) -> Output[Dict[str, Any]
             "total_laps": total_laps,
             "num_lap_records": len(laps) if laps is not None else 0,
             "num_weather_records": len(weather) if weather is not None else 0,
-            "num_race_control_messages": len(race_control_messages)
-            if race_control_messages is not None
-            else 0,
+            "num_race_control_messages": (
+                len(race_control_messages) if race_control_messages is not None else 0
+            ),
             "data_types_loaded": [k for k, v in session_data.items() if v is not None],
             "data_types_failed": [k for k, v in session_data.items() if v is None],
         }
