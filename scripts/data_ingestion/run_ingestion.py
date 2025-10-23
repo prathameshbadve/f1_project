@@ -157,7 +157,7 @@ def run_ingestion(
 
     # Get the configurable job
     try:
-        job = defs.get_job_def("f1_configurable_session_job")
+        job = defs.get_job_def("f1_configurable_session")
     except Exception as e:  # pylint: disable=broad-except
         logger.error("❌ Error loading job definition: %s", str(e))
         return False
