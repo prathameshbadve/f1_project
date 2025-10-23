@@ -37,10 +37,11 @@ jobs:
     steps:
       - name: 🏁 Job Configuration Summary
         run: |
-          # Determine scope
-          EVENT_INPUT="${{ inputs.event_name }}"
-          SESSION_INPUT="${{ inputs.session_type }}"
+          # Store inputs in variables with proper quoting
+          EVENT_INPUT='${{ inputs.event_name }}'
+          SESSION_INPUT='${{ inputs.session_type }}'
 
+          # Determine scope
           if [ -n "$SESSION_INPUT" ] && [ -n "$EVENT_INPUT" ]; then
             # Count number of items
             EVENT_COUNT=$(echo "$EVENT_INPUT" | tr ',' '\n' | wc -l)
@@ -157,20 +158,28 @@ jobs:
           echo "🚀 Starting F1 data ingestion using run_ingestion.py script..."
           echo ""
 
+          # Store inputs in variables
+          EVENT_INPUT='${{ inputs.event_name }}'
+          SESSION_INPUT='${{ inputs.session_type }}'
+
           # Build base command
           CMD="python scripts/data_ingestion/run_ingestion.py --year ${{ inputs.year }}"
 
-          # Add event names if provided (convert comma-separated to space-separated)
-          if [ -n "${{ inputs.event_name }}" ]; then
-            # Convert "Event1,Event2" to "Event1" "Event2"
-            EVENTS=$(echo "${{ inputs.event_name }}" | sed 's/,/" "/g')
-            CMD="$CMD --event \"$EVENTS\""
+          # Add event names if provided
+          if [ -n "$EVENT_INPUT" ]; then
+            # Replace commas with space and wrap each event in quotes
+            # "Event1,Event2" becomes "Event1" "Event2"
+            IFS=',' read -ra EVENTS <<< "$EVENT_INPUT"
+            for event in "${EVENTS[@]}"; do
+              CMD="$CMD --event \"$event\""
+            done
           fi
 
-          # Add session types if provided (convert comma-separated to space-separated)
-          if [ -n "${{ inputs.session_type }}" ]; then
-            # Convert "R,Q,S" to "R Q S"
-            SESSIONS=$(echo "${{ inputs.session_type }}" | sed 's/,/ /g')
+          # Add session types if provided
+          if [ -n "$SESSION_INPUT" ]; then
+            # Replace commas with spaces
+            # "R,Q,S" becomes R Q S
+            SESSIONS=$(echo "$SESSION_INPUT" | tr ',' ' ')
             CMD="$CMD --session $SESSIONS"
           fi
 
@@ -278,16 +287,24 @@ jobs:
         run: |
           echo "🔄 Retry attempt ${{ matrix.attempt }} of 3"
 
+          # Store inputs in variables
+          EVENT_INPUT='${{ inputs.event_name }}'
+          SESSION_INPUT='${{ inputs.session_type }}'
+
           # Build command
           CMD="python scripts/data_ingestion/run_ingestion.py --year ${{ inputs.year }}"
 
-          if [ -n "${{ inputs.event_name }}" ]; then
-            EVENTS=$(echo "${{ inputs.event_name }}" | sed 's/,/" "/g')
-            CMD="$CMD --event \"$EVENTS\""
+          # Add event names if provided
+          if [ -n "$EVENT_INPUT" ]; then
+            IFS=',' read -ra EVENTS <<< "$EVENT_INPUT"
+            for event in "${EVENTS[@]}"; do
+              CMD="$CMD --event \"$event\""
+            done
           fi
 
-          if [ -n "${{ inputs.session_type }}" ]; then
-            SESSIONS=$(echo "${{ inputs.session_type }}" | sed 's/,/ /g')
+          # Add session types if provided
+          if [ -n "$SESSION_INPUT" ]; then
+            SESSIONS=$(echo "$SESSION_INPUT" | tr ',' ' ')
             CMD="$CMD --session $SESSIONS"
           fi
 
