@@ -45,25 +45,65 @@ class StorageResource(ConfigurableResource):
             region=self.region,
         )
 
-    # def upload_json(self, bucket: str, object_name: str, data: str) -> None:
-    #     """Upload JSON data to storage"""
+    def build_object_key(
+        self,
+        data_type: str,
+        year: int,
+        event_name: Optional[str],
+        session_type: Optional[str],
+    ) -> str:
+        """
+        Build a standardized object key for F1 data.
 
-    #     client = self.get_client()
-    #     data_bytes = data.encode("utf-8")
-    #     client.put_object(
-    #         bucket,
-    #         object_name,
-    #         BytesIO(data_bytes),
-    #         length=len(data_bytes),
-    #         content_type="application/json",
-    #     )
+        Args:
+            year: Season year
+            data_type: Type of data (race_results, qualifying_results, laps, weather, schedule)
+            event_name: Name of the event (required unless data_type is 'schedule')
+            session_type: Q, R, S, etc. (required unless data_type is 'schedule')
 
-    # def download_json(self, bucket: str, object_name: str) -> str:
-    #     """Download JSON data from storage"""
+        Returns:
+            Object key string
 
-    #     client = self.get_client()
-    #     response = client.get_object(bucket, object_name)
-    #     return response.read().decode("utf-8")
+        Example:
+            >>> key = storage.build_object_key(2024, "race_results", "Bahrain Grand Prix", "R")
+            >>> print(key)
+            '2024/bahrain_grand_prix/R/race_results.parquet'
+
+            >>> key = storage.build_object_key(2024, "schedule")
+            >>> print(key)
+            '2024/schedule.parquet'
+        """
+
+        # Special case for schedule data
+        if data_type == "schedule":
+            object_key = f"{year}/season_{data_type}.parquet"
+            # logger.info(
+            #     "Built object key for season schedule %d: %s", year, object_key
+            # )
+            return object_key
+
+        # For all other data types, event_name and session_type are required
+        if event_name is None:
+            raise ValueError(f"event_name is required for data_type '{data_type}'")
+        if session_type is None:
+            raise ValueError(f"session_type is required for data_type '{data_type}'")
+
+        # Clean event name (lowercase, replace spaces with underscores)
+        clean_event = event_name.lower().replace(" ", "_")
+
+        # Build path: year/round_XX_event_name/data_type.parquet
+        object_key = f"{year}/{clean_event}/{session_type}/{data_type}.parquet"
+
+        # self.logger.info(
+        #     "Built object key for %s of %s %s %d: %s",
+        #     data_type,
+        #     event_name,
+        #     session_type,
+        #     year,
+        #     object_key,
+        # )
+
+        return object_key
 
     def upload_dataframe(
         self,
@@ -169,6 +209,26 @@ class StorageResource(ConfigurableResource):
             "etag": stat.etag,
             "content_type": stat.content_type,
         }
+
+    # def upload_json(self, bucket: str, object_name: str, data: str) -> None:
+    #     """Upload JSON data to storage"""
+
+    #     client = self.get_client()
+    #     data_bytes = data.encode("utf-8")
+    #     client.put_object(
+    #         bucket,
+    #         object_name,
+    #         BytesIO(data_bytes),
+    #         length=len(data_bytes),
+    #         content_type="application/json",
+    #     )
+
+    # def download_json(self, bucket: str, object_name: str) -> str:
+    #     """Download JSON data from storage"""
+
+    #     client = self.get_client()
+    #     response = client.get_object(bucket, object_name)
+    #     return response.read().decode("utf-8")
 
 
 # class DatabaseResource(ConfigurableResource):
