@@ -7,9 +7,8 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+    env_file:
+      - .env.development
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -28,10 +27,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    env_file:
+      - .env.development
     environment:
-      POSTGRES_USER: f1user
-      POSTGRES_PASSWORD: f1pass
-      POSTGRES_DB: f1_data
       POSTGRES_INITDB_ARGS: "-E UTF8"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U f1user -d f1_data"]
@@ -49,9 +47,8 @@ services:
       - "8080:5000"
     volumes:
       - mlflow_data:/mlflow
-    environment:
-      BACKEND_STORE_URI: sqlite:///mlflow/mlflow.db
-      ARTIFACT_ROOT: /mlflow/artifacts
+    env_file:
+      - .env.development
     command: >
       mlflow server
       --backend-store-uri sqlite:///mlflow/mlflow.db
@@ -81,45 +78,8 @@ services:
     container_name: f1-dagster-webserver
     ports:
       - "3000:3000"
-    environment:
-      # Dagster PostgreSQL configuration
-      DAGSTER_POSTGRES_HOST: postgres
-      DAGSTER_POSTGRES_PORT: 5432
-      DAGSTER_POSTGRES_USER: f1user
-      DAGSTER_POSTGRES_PASSWORD: f1pass
-      DAGSTER_POSTGRES_DB: f1_dagster
-      DATABASE_URL: postgresql://f1user:f1pass@postgres:5432/f1_data
-
-      # Environment
-      ENVIRONMENT: development
-
-      # MinIO configuration
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET_RAW: dev-f1-data-raw
-      MINIO_BUCKET_PROCESSED: dev-f1-data-processed
-      MINIO_SECURE: "false"
-
-      # Database configuration (for application use)
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: f1user
-      DB_PASSWORD: f1pass
-      DB_NAME: f1_data
-      DB_URL: postgresql://f1user:f1pass@postgres:5432/f1_dagster
-
-      # MLflow configuration
-      MLFLOW_TRACKING_URI: http://mlflow:5000
-      MLFLOW_EXPERIMENT_NAME: f1-race-prediction-development
-
-      # # F1 API configuration
-      # F1_API_BASE_URL: https://ergast.com/api/f1
-      # F1_API_RATE_LIMIT_DELAY: "1.0"
-      # F1_API_TIMEOUT: "30"
-
-      # Dagster configuration
-      DAGSTER_HOME: /opt/dagster/dagster_home
+    env_file:
+      - .env.development
     volumes:
       # Mount code for live reload during development
       - ../dagster_project:/opt/dagster/app/dagster_project
@@ -149,49 +109,14 @@ services:
       context: ..
       dockerfile: docker/Dockerfiles/Dockerfile.dagster
     container_name: f1-dagster-daemon
-    environment:
-      # Dagster PostgreSQL configuration
-      DAGSTER_POSTGRES_USER: f1user
-      DAGSTER_POSTGRES_PASSWORD: f1pass
-      DAGSTER_POSTGRES_DB: f1_dagster
-      DAGSTER_POSTGRES_HOST: postgres
-      DAGSTER_POSTGRES_PORT: 5432
-      DATABASE_URL: postgresql://f1user:f1pass@postgres:5432/f1_data
-
-      # Environment
-      ENVIRONMENT: development
-
-      # MinIO configuration
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET_RAW: dev-f1-data-raw
-      MINIO_BUCKET_PROCESSED: dev-f1-data-processed
-      MINIO_SECURE: "false"
-
-      # Database configuration (for application use)
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: f1_data
-      DB_USER: f1user
-      DB_PASSWORD: f1pass
-
-      # MLflow configuration
-      MLFLOW_TRACKING_URI: http://mlflow:5000
-      MLFLOW_EXPERIMENT_NAME: f1-race-prediction-development
-
-      # # F1 API configuration
-      # F1_API_BASE_URL: https://ergast.com/api/f1
-      # F1_API_RATE_LIMIT_DELAY: "1.0"
-      # F1_API_TIMEOUT: "30"
-
-      # Dagster configuration
-      DAGSTER_HOME: /opt/dagster/dagster_home
+    env_file:
+      - .env.development
     volumes:
       # Mount code for live reload during development
       - ../dagster_project:/opt/dagster/app/dagster_project
       - ../config:/opt/dagster/app/config
       - ../scripts:/opt/dagster/app/scripts
+      - ../src:/opt/dagster/app/src
       - dagster_logs:/tmp/dagster/logs
     command: dagster-daemon run -w /opt/dagster/app/workspace.yaml
     depends_on:

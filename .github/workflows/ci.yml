@@ -116,11 +116,11 @@ jobs:
           MINIO_BUCKET_RAW: test-f1-data-raw
           MINIO_BUCKET_PROCESSED: test-f1-data-processed
           MINIO_SECURE: false
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: f1_data
-          DB_USER: f1user
-          DB_PASSWORD: f1pass
+          POSTGRES_DB_HOST: localhost
+          POSTGRES_DB_PORT: 5432
+          POSTGRES_DB_NAME: f1_data
+          POSTGRES_DB_USER: f1user
+          POSTGRES_DB_PASSWORD: f1pass
           ENVIRONMENT: testing
           LOG_DIR: monitoring/logs
           LOG_LEVEL: INFO
@@ -217,11 +217,11 @@ jobs:
           MINIO_BUCKET_RAW: test-f1-data-raw
           MINIO_BUCKET_PROCESSED: test-f1-data-processed
           MINIO_SECURE: false
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: f1_data
-          DB_USER: f1user
-          DB_PASSWORD: f1pass
+          POSTGRES_DB_HOST: localhost
+          POSTGRES_DB_PORT: 5432
+          POSTGRES_DB_NAME: f1_data
+          POSTGRES_DB_USER: f1user
+          POSTGRES_DB_PASSWORD: f1pass
           ENVIRONMENT: testing
           FASTF1_CACHE_DIR: /tmp/fastf1_cache
           LOG_DIR: monitoring/logs

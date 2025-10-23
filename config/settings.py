@@ -24,7 +24,7 @@ class Environment(str, Enum):
 
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", Environment.DEVELOPMENT.value)
-LOG_DIR = os.getenv("LOG_DIR", "mointoring/logs")
+LOG_DIR = os.getenv("LOG_DIR", "monitoring/logs")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 FASTF1_LOG_LEVEL = os.getenv("FASTF1_LOG_LEVEL", "INFO")
 
@@ -213,7 +213,7 @@ class FastF1Config(Config):
         # Session settings
         self.include_testing = os.getenv("INCLUDE_TESTING", "False").lower() == "true"
         self.include_free_practice = (
-            os.getenv("INCLUDE_FREE_PRACTICE", "False").lower() == "true"
+            os.getenv("INCLUDE_FREE_PRACTICE", "True").lower() == "true"
         )
         self.include_qualifying = (
             os.getenv("INCLUDE_QUALIFYING", "True").lower() == "true"
@@ -223,7 +223,7 @@ class FastF1Config(Config):
         # Data features
         self.enable_laps = os.getenv("ENABLE_LAPS", "True").lower() == "true"
         self.enable_race_control_messages = (
-            os.getenv("ENABLE_RACE_CONTROL_MSGS", "False").lower() == "true"
+            os.getenv("ENABLE_RACE_CONTROL_MSGS", "True").lower() == "true"
         )
         self.enable_weather_data = (
             os.getenv("ENABLE_WEATHER_DATA", "True").lower() == "true"
@@ -294,7 +294,7 @@ class DatabaseConfig(Config):
             )
 
         # Support DATABASE_URL override
-        db_url = os.getenv("DATABASE_URL")
+        db_url = os.getenv("POSTGRES_DB_URL")
         if db_url:
             self.db_url = db_url
         else:
@@ -313,11 +313,11 @@ class DatabaseConfig(Config):
     ):
         """Development database configuration"""
 
-        self.host = host or os.getenv("DB_HOST", "localhost")
-        self.port = port or int(os.getenv("DB_PORT", "5434"))
-        self.database = database or os.getenv("DB_NAME", "f1_data")
-        self.user = user or os.getenv("DB_USER", "f1user")
-        self.password = password or os.getenv("DB_PASSWORD", "f1pass")
+        self.host = host or os.getenv("POSTGRES_DB_HOST", "localhost")
+        self.port = port or int(os.getenv("POSTGRES_DB_PORT", "5434"))
+        self.database = database or os.getenv("POSTGRES_DB_NAME", "f1_data")
+        self.user = user or os.getenv("POSTGRES_DB_USER", "f1user")
+        self.password = password or os.getenv("POSTGRES_DB_PASSWORD", "f1pass")
 
     def _load_production_database_config(
         self,
@@ -329,11 +329,11 @@ class DatabaseConfig(Config):
     ):
         """Production database configuration"""
 
-        self.host = host or os.getenv("DB_HOST")
-        self.port = port or int(os.getenv("DB_PORT", "5432"))
-        self.database = database or os.getenv("DB_NAME")
-        self.user = user or os.getenv("DB_USER")
-        self.password = password or os.getenv("DB_PASSWORD")
+        self.host = host or os.getenv("POSTGRES_DB_HOST")
+        self.port = port or int(os.getenv("POSTGRES_DB_PORT", "5432"))
+        self.database = database or os.getenv("POSTGRES_DB_NAME")
+        self.user = user or os.getenv("POSTGRES_DB_USER")
+        self.password = password or os.getenv("POSTGRES_DB_PASSWORD")
 
     def is_config_valid(self) -> bool:
         """
@@ -513,7 +513,7 @@ class DagsterConfig(Config):
             )
 
         # Support DATABASE_URL override
-        dagster_db_url = os.getenv("DAGSTER_DATABASE_URL")
+        dagster_db_url = os.getenv("DAGSTER_POSTGRES_DB_URL")
         if dagster_db_url:
             self.dagster_db_url = dagster_db_url
         else:
@@ -532,11 +532,11 @@ class DagsterConfig(Config):
     ):
         """Development database configuration"""
 
-        self.host = host or os.getenv("DB_HOST", "localhost")
-        self.port = port or int(os.getenv("DB_PORT", "5434"))
-        self.database = database or os.getenv("DAGSTER_DB_NAME", "f1_dagster_data")
-        self.user = user or os.getenv("DB_USER", "f1user")
-        self.password = password or os.getenv("DB_PASSWORD", "f1pass")
+        self.host = host or os.getenv("DAGSTER_POSTGRES_HOST", "localhost")
+        self.port = port or int(os.getenv("DAGSTER_POSTGRES_PORT", "5434"))
+        self.database = database or os.getenv("DAGSTER_POSTGRES_DB", "f1_dagster")
+        self.user = user or os.getenv("DAGSTER_POSTGRES_USER", "f1user")
+        self.password = password or os.getenv("DAGSTER_POSTGRES_PASSWORD", "f1pass")
 
     def _load_production_dagster_config(
         self,
@@ -548,11 +548,11 @@ class DagsterConfig(Config):
     ):
         """Development database configuration"""
 
-        self.host = host or os.getenv("DB_HOST")
-        self.port = port or int(os.getenv("DB_PORT", "5434"))
-        self.database = database or os.getenv("DAGSTER_DB_NAME")
-        self.user = user or os.getenv("DB_USER")
-        self.password = password or os.getenv("DB_PASSWORD")
+        self.host = host or os.getenv("DAGSTER_POSTGRES_HOST")
+        self.port = port or int(os.getenv("DAGSTER_POSTGRES_PORT", "5434"))
+        self.database = database or os.getenv("DAGSTER_POSTGRES_DB")
+        self.user = user or os.getenv("DAGSTER_POSTGRES_USER")
+        self.password = password or os.getenv("DAGSTER_POSTGRES_PASSWORD")
 
     def is_dagster_config_valid(self) -> bool:
         """

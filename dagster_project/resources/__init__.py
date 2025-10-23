@@ -8,16 +8,17 @@ Resources provide reusable connections to external systems
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-import mlflow
+# import mlflow
 import pandas as pd
-from dagster import ConfigurableResource, InitResourceContext
+from dagster import ConfigurableResource  # , InitResourceContext
 from minio import Minio
-from psycopg2.pool import SimpleConnectionPool
-from sqlalchemy import create_engine
+
+# from psycopg2.pool import SimpleConnectionPool
+# from sqlalchemy import create_engine
 
 from config.settings import (
-    database_config,
-    mlflow_config,
+    # database_config,
+    # mlflow_config,
     storage_config,
 )
 
@@ -44,25 +45,25 @@ class StorageResource(ConfigurableResource):
             region=self.region,
         )
 
-    def upload_json(self, bucket: str, object_name: str, data: str) -> None:
-        """Upload JSON data to storage"""
+    # def upload_json(self, bucket: str, object_name: str, data: str) -> None:
+    #     """Upload JSON data to storage"""
 
-        client = self.get_client()
-        data_bytes = data.encode("utf-8")
-        client.put_object(
-            bucket,
-            object_name,
-            BytesIO(data_bytes),
-            length=len(data_bytes),
-            content_type="application/json",
-        )
+    #     client = self.get_client()
+    #     data_bytes = data.encode("utf-8")
+    #     client.put_object(
+    #         bucket,
+    #         object_name,
+    #         BytesIO(data_bytes),
+    #         length=len(data_bytes),
+    #         content_type="application/json",
+    #     )
 
-    def download_json(self, bucket: str, object_name: str) -> str:
-        """Download JSON data from storage"""
+    # def download_json(self, bucket: str, object_name: str) -> str:
+    #     """Download JSON data from storage"""
 
-        client = self.get_client()
-        response = client.get_object(bucket, object_name)
-        return response.read().decode("utf-8")
+    #     client = self.get_client()
+    #     response = client.get_object(bucket, object_name)
+    #     return response.read().decode("utf-8")
 
     def upload_dataframe(
         self,
@@ -170,151 +171,151 @@ class StorageResource(ConfigurableResource):
         }
 
 
-class DatabaseResource(ConfigurableResource):
-    """Resource for PostgreSQL database operations"""
+# class DatabaseResource(ConfigurableResource):
+#     """Resource for PostgreSQL database operations"""
 
-    host: str
-    port: int
-    database: str
-    user: str
-    password: str
+#     host: str
+#     port: int
+#     database: str
+#     user: str
+#     password: str
 
-    _pool: Optional[SimpleConnectionPool] = None
+#     _pool: Optional[SimpleConnectionPool] = None
 
-    def setup_for_execution(self, context: InitResourceContext) -> None:
-        """Initialize connection pool"""
+#     def setup_for_execution(self, context: InitResourceContext) -> None:
+#         """Initialize connection pool"""
 
-        self._pool = SimpleConnectionPool(
-            minconn=1,
-            maxconn=10,
-            host=self.host,
-            port=self.port,
-            database=self.database,
-            user=self.user,
-            password=self.password,
-        )
+#         self._pool = SimpleConnectionPool(
+#             minconn=1,
+#             maxconn=10,
+#             host=self.host,
+#             port=self.port,
+#             database=self.database,
+#             user=self.user,
+#             password=self.password,
+#         )
 
-    def teardown_after_execution(self, context: InitResourceContext) -> None:
-        """Close connection pool"""
+#     def teardown_after_execution(self, context: InitResourceContext) -> None:
+#         """Close connection pool"""
 
-        if self._pool:
-            self._pool.closeall()
+#         if self._pool:
+#             self._pool.closeall()
 
-    def get_connection(self):
-        """Get a connection from the pool"""
+#     def get_connection(self):
+#         """Get a connection from the pool"""
 
-        if not self._pool:
-            raise RuntimeError("Database pool not initialized")
-        return self._pool.getconn()
+#         if not self._pool:
+#             raise RuntimeError("Database pool not initialized")
+#         return self._pool.getconn()
 
-    def return_connection(self, conn):
-        """Return connection to the pool"""
+#     def return_connection(self, conn):
+#         """Return connection to the pool"""
 
-        if self._pool:
-            self._pool.putconn(conn)
+#         if self._pool:
+#             self._pool.putconn(conn)
 
-    def execute_query(self, query: str, params: tuple = None) -> list:
-        """Execute a SELECT query and return results"""
+#     def execute_query(self, query: str, params: tuple = None) -> list:
+#         """Execute a SELECT query and return results"""
 
-        conn = self.get_connection()
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute(query, params)
-                return cursor.fetchall()
-        finally:
-            self.return_connection(conn)
+#         conn = self.get_connection()
+#         try:
+#             with conn.cursor() as cursor:
+#                 cursor.execute(query, params)
+#                 return cursor.fetchall()
+#         finally:
+#             self.return_connection(conn)
 
-    def execute_command(self, command: str, params: tuple = None) -> None:
-        """Execute an INSERT/UPDATE/DELETE command"""
+#     def execute_command(self, command: str, params: tuple = None) -> None:
+#         """Execute an INSERT/UPDATE/DELETE command"""
 
-        conn = self.get_connection()
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute(command, params)
-                conn.commit()
-        finally:
-            self.return_connection(conn)
+#         conn = self.get_connection()
+#         try:
+#             with conn.cursor() as cursor:
+#                 cursor.execute(command, params)
+#                 conn.commit()
+#         finally:
+#             self.return_connection(conn)
 
-    def execute_many(self, command: str, params_list: list) -> None:
-        """Execute a command with multiple parameter sets"""
+#     def execute_many(self, command: str, params_list: list) -> None:
+#         """Execute a command with multiple parameter sets"""
 
-        conn = self.get_connection()
-        try:
-            with conn.cursor() as cursor:
-                cursor.executemany(command, params_list)
-                conn.commit()
-        finally:
-            self.return_connection(conn)
+#         conn = self.get_connection()
+#         try:
+#             with conn.cursor() as cursor:
+#                 cursor.executemany(command, params_list)
+#                 conn.commit()
+#         finally:
+#             self.return_connection(conn)
 
-    def dataframe_to_sql(
-        self, df: pd.DataFrame, table_name: str, if_exists: str = "append"
-    ) -> None:
-        """
-        Write DataFrame to PostgreSQL table.
+#     def dataframe_to_sql(
+#         self, df: pd.DataFrame, table_name: str, if_exists: str = "append"
+#     ) -> None:
+#         """
+#         Write DataFrame to PostgreSQL table.
 
-        Args:
-            df: DataFrame to write
-            table_name: Name of table
-            if_exists: What to do if table exists ('fail', 'replace', 'append')
-        """
+#         Args:
+#             df: DataFrame to write
+#             table_name: Name of table
+#             if_exists: What to do if table exists ('fail', 'replace', 'append')
+#         """
 
-        engine = create_engine(
-            f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
-        )
+#         engine = create_engine(
+#             f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+#         )
 
-        df.to_sql(table_name, engine, if_exists=if_exists, index=False)
+#         df.to_sql(table_name, engine, if_exists=if_exists, index=False)
 
-    def query_to_dataframe(self, query: str) -> pd.DataFrame:
-        """Execute query and return results as DataFrame"""
+#     def query_to_dataframe(self, query: str) -> pd.DataFrame:
+#         """Execute query and return results as DataFrame"""
 
-        engine = create_engine(
-            f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
-        )
+#         engine = create_engine(
+#             f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+#         )
 
-        return pd.read_sql(query, engine)
+#         return pd.read_sql(query, engine)
 
 
-class MLflowResource(ConfigurableResource):
-    """Resource for MLflow experiment tracking"""
+# class MLflowResource(ConfigurableResource):
+#     """Resource for MLflow experiment tracking"""
 
-    tracking_uri: str
-    experiment_name: str
+#     tracking_uri: str
+#     experiment_name: str
 
-    def setup_for_execution(self, context: InitResourceContext) -> None:
-        """Configure MLflow"""
+#     def setup_for_execution(self, context: InitResourceContext) -> None:
+#         """Configure MLflow"""
 
-        mlflow.set_tracking_uri(self.tracking_uri)
-        mlflow.set_experiment(self.experiment_name)
+#         mlflow.set_tracking_uri(self.tracking_uri)
+#         mlflow.set_experiment(self.experiment_name)
 
-    def start_run(self, run_name: str = None, tags: Dict[str, str] = None):
-        """Start an MLflow run"""
+#     def start_run(self, run_name: str = None, tags: Dict[str, str] = None):
+#         """Start an MLflow run"""
 
-        return mlflow.start_run(run_name=run_name, tags=tags)
+#         return mlflow.start_run(run_name=run_name, tags=tags)
 
-    def log_params(self, params: Dict[str, Any]) -> None:
-        """Log parameters to MLflow"""
+#     def log_params(self, params: Dict[str, Any]) -> None:
+#         """Log parameters to MLflow"""
 
-        mlflow.log_params(params)
+#         mlflow.log_params(params)
 
-    def log_metrics(self, metrics: Dict[str, float]) -> None:
-        """Log metrics to MLflow"""
+#     def log_metrics(self, metrics: Dict[str, float]) -> None:
+#         """Log metrics to MLflow"""
 
-        mlflow.log_metrics(metrics)
+#         mlflow.log_metrics(metrics)
 
-    def log_artifact(self, local_path: str) -> None:
-        """Log artifact to MLflow"""
+#     def log_artifact(self, local_path: str) -> None:
+#         """Log artifact to MLflow"""
 
-        mlflow.log_artifact(local_path)
+#         mlflow.log_artifact(local_path)
 
-    def log_model(self, model, artifact_path: str) -> None:
-        """Log model to MLflow"""
+#     def log_model(self, model, artifact_path: str) -> None:
+#         """Log model to MLflow"""
 
-        mlflow.sklearn.log_model(model, artifact_path)
+#         mlflow.sklearn.log_model(model, artifact_path)
 
-    def end_run(self) -> None:
-        """End the current MLflow run"""
+#     def end_run(self) -> None:
+#         """End the current MLflow run"""
 
-        mlflow.end_run()
+#         mlflow.end_run()
 
 
 # ============================================================================
@@ -332,17 +333,17 @@ storage_resource = StorageResource(
     region=storage_config.region,
 )
 
-# Database resource (PostgreSQL)
-database_resource = DatabaseResource(
-    host=database_config.host,
-    port=database_config.port,
-    database=database_config.database,
-    user=database_config.user,
-    password=database_config.password,
-)
+# # Database resource (PostgreSQL)
+# database_resource = DatabaseResource(
+#     host=database_config.host,
+#     port=database_config.port,
+#     database=database_config.database,
+#     user=database_config.user,
+#     password=database_config.password,
+# )
 
-# MLflow resource
-mlflow_resource = MLflowResource(
-    tracking_uri=mlflow_config.tracking_uri,
-    experiment_name=mlflow_config.experiment_name,
-)
+# # MLflow resource
+# mlflow_resource = MLflowResource(
+#     tracking_uri=mlflow_config.tracking_uri,
+#     experiment_name=mlflow_config.experiment_name,
+# )
