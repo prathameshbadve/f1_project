@@ -46,6 +46,35 @@ def get_2024_session_partitions() -> List[str]:
     return prtn_keys
 
 
+# ============================================================================
+# STATIC PARTITIONS (2024 Season)
+# ============================================================================
+
+# Create the static partitions definition for 2024
+# This is evaluated once when Dagster loads, so it's fast
+try:
+    partition_keys = get_2024_session_partitions()
+
+    f1_2024_sessions_partitions = StaticPartitionsDefinition(
+        partition_keys=partition_keys
+    )
+
+    # For logging/debugging
+    print(f"✅ Created {len(partition_keys)} partitions for 2024 season")
+    print(f"   Sample partitions: {partition_keys[:3]}")
+
+except Exception as e:  # pylint: disable=broad-except
+    print(f"⚠️  Failed to create partitions: {e}")
+    print("   Creating empty partitions as fallback")
+
+    # Fallback: empty partitions (Dagster won't crash)
+    f1_2024_sessions_partitions = StaticPartitionsDefinition(partition_keys=[])
+
+
+# ============================================================================
+# DYNAMIC PARTITIONS (Any Year/Event/Session)
+# ============================================================================
+
 # def get_season_session_partitions(year: int) -> List[str]:
 #     """
 #     Get all session partitions for a given year.
@@ -81,36 +110,6 @@ def get_2024_session_partitions() -> List[str]:
 #             prtn_keys.append(partition_key)
 
 #     return prtn_keys
-
-
-# ============================================================================
-# STATIC PARTITIONS (2024 Season)
-# ============================================================================
-
-# Create the static partitions definition for 2024
-# This is evaluated once when Dagster loads, so it's fast
-try:
-    partition_keys = get_2024_session_partitions()
-
-    f1_2024_sessions_partitions = StaticPartitionsDefinition(
-        partition_keys=partition_keys
-    )
-
-    # For logging/debugging
-    print(f"✅ Created {len(partition_keys)} partitions for 2024 season")
-    print(f"   Sample partitions: {partition_keys[:3]}")
-
-except Exception as e:  # pylint: disable=broad-except
-    print(f"⚠️  Failed to create partitions: {e}")
-    print("   Creating empty partitions as fallback")
-
-    # Fallback: empty partitions (Dagster won't crash)
-    f1_2024_sessions_partitions = StaticPartitionsDefinition(partition_keys=[])
-
-
-# ============================================================================
-# DYNAMIC PARTITIONS (Any Year/Event/Session)
-# ============================================================================
 
 # Dynamic partitions that can be populated at runtime
 # f1_dynamic_sessions_partitions = DynamicPartitionsDefinition(name="f1_dynamic_sessions")

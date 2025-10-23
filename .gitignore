@@ -271,6 +271,7 @@ mlflow.db
 # Docker volumes data (not tracked)
 docker/volumes/
 docker/.env.development
+docker/.env.production
 
 # AWS credentials (NEVER commit these!)
 .aws/

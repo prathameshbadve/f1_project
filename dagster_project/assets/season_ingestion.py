@@ -16,14 +16,13 @@ from src.data_ingestion.session_data_loader import SessionLoader
 from src.data_ingestion.schedule_loader import ScheduleLoader
 from src.data_ingestion.storage_client import StorageClient
 
-from config.logging import setup_logging, get_logger
+from config.logging import get_logger
 
 
 # ============================================================================
 # LOGGING SETUP
 # ============================================================================
 
-setup_logging()
 dagster_logger = get_logger("data_ingestion.dagster")
 
 
