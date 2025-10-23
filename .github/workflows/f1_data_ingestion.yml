@@ -11,16 +11,16 @@ on:
                 default: "2024"
 
             event_name:
-                description: 'Event name (e.g., "Italian Grand Prix", "Monaco Grand Prix") - Leave empty for full season'
+                description: 'Event name (e.g., ["Italian Grand Prix"], ["Italian Grand Prix", "Monaco Grand Prix"]) - Leave empty for full season'
                 required: false
                 type: string
-                default: ""
+                default: "[]"
 
             session_type:
-                description: "Session type (R, Q, S, SS, SQ, FP1, FP2, FP3) - Leave empty for all sessions"
+                description: 'Session type (["R"], ["Q", "S"], ["FP1", "FP2", "FP3"]) - Leave empty for all sessions'
                 required: false
                 type: string
-                default: ""
+                default: "[]"
 
             dry_run:
                 description: "Dry run mode (validate only, no actual ingestion)"
@@ -38,7 +38,6 @@ jobs:
             - name: 🏁 Job Configuration Summary
               run: |
                   # Determine scope
-
                   if [ -n "${{ inputs.session_type }}" ]; then
                     SCOPE="Single Session"
                   elif [ -n "${{ inputs.event_name }}" ]; then
@@ -82,8 +81,8 @@ jobs:
               run: |
                   mkdir -p /tmp/fastf1_cache
                   mkdir -p /tmp/dagster_home
-                  mkdir -p /tmp/dagster/logs
-                  chmod -R 777 /tmp/fastf1_cache /tmp/dagster_home /tmp/dagster/logs
+                  mkdir -p monitoring/logs
+                  chmod -R 777 /tmp/fastf1_cache /tmp/dagster_home monitoring/logs
                   echo "✅ Directories created"
 
             - name: 🔍 Validate Configuration
@@ -172,98 +171,36 @@ jobs:
                   ENABLE_TELEMETRY: False
 
                   # Logging
-                  LOG_DIR: /tmp/monitoring/logs
+                  LOG_DIR: monitoring/logs
                   LOG_LEVEL: INFO
 
               run: |
-                  echo "Starting F1 data ingestion..."
+                  echo "Starting F1 data ingestion using run_ingestion.py script..."
+                  echo ""
 
-                  # Build run config based on inputs
-                  YEAR="${{ inputs.year }}"
-                  EVENT_NAME="${{ inputs.event_name }}"
-                  SESSION_TYPE="${{ inputs.session_type }}"
-                  DRY_RUN="${{ inputs.dry_run }}"
+                  # Build command with arguments
+                  CMD="python scripts/run_ingestion.py --year ${{ inputs.year }}"
 
-                  # Create Python script to run the job
-                  cat > run_ingestion.py << 'EOFPYTHON'
-                  import os
-                  import sys
-                  from dagster import DagsterInstance, execute_job
-                  from dagster_project import defs
+                  # Add optional event name (with quotes if it contains spaces)
+                  if [ -n "${{ inputs.event_name }}" ]; then
+                    CMD="$CMD --event '${{ inputs.event_name }}'"
+                  fi
 
-                  # Get inputs
-                  year = int("${{ inputs.year }}")
-                  event_name = "${{ inputs.event_name }}" or None
-                  session_type = "${{ inputs.session_type }}" or None
-                  dry_run = "${{ inputs.dry_run }}" == "true"
+                  # Add optional session type
+                  if [ -n "${{ inputs.session_type }}" ]; then
+                    CMD="$CMD --session ${{ inputs.session_type }}"
+                  fi
 
-                  print(f"\n{'='*60}")
-                  print(f"F1 Data Ingestion Job")
-                  print(f"{'='*60}")
-                  print(f"Year: {year}")
-                  print(f"Event: {event_name or 'All Events'}")
-                  print(f"Session: {session_type or 'All Sessions'}")
-                  print(f"Dry Run: {dry_run}")
-                  print(f"{'='*60}\n")
+                  # Add dry-run flag if enabled
+                  if [ "${{ inputs.dry_run }}" == "true" ]; then
+                    CMD="$CMD --dry-run"
+                  fi
 
-                  if dry_run:
-                      print("🔍 DRY RUN MODE - Validation Only")
-                      print("\nThis would ingest:")
-                      if session_type:
-                          print(f"  ✓ Single session: {year} {event_name} {session_type}")
-                      elif event_name:
-                          print(f"  ✓ All sessions from: {year} {event_name}")
-                      else:
-                          print(f"  ✓ Full season: All events from {year}")
-                      print("\n✅ Dry run validation complete - no data ingested")
-                      sys.exit(0)
+                  echo "Executing: $CMD"
+                  echo ""
 
-                  # Get the configurable job
-                  job = defs.get_job_def('f1_configurable_session_job')
-
-                  # Build config
-                  config = {
-                      'ops': {
-                          'f1_session_configurable': {
-                              'config': {
-                                  'year': year,
-                              }
-                          }
-                      }
-                  }
-
-                  # Add optional parameters
-                  if event_name:
-                      config['ops']['f1_session_configurable']['config']['event_name'] = event_name
-                  if session_type:
-                      config['ops']['f1_session_configurable']['config']['session_type'] = session_type
-
-                  print(f"Executing job with config: {config}\n")
-
-                  # Execute the job
-                  try:
-                      result = execute_job(
-                          job,
-                          instance=DagsterInstance.get(),
-                          run_config=config
-                      )
-                      
-                      if result.success:
-                          print("\n✅ Job completed successfully!")
-                          sys.exit(0)
-                      else:
-                          print("\n❌ Job failed!")
-                          sys.exit(1)
-                          
-                  except Exception as e:
-                      print(f"\n❌ Error executing job: {e}")
-                      import traceback
-                      traceback.print_exc()
-                      sys.exit(1)
-                  EOFPYTHON
-
-                  # Run the ingestion
-                  python run_ingestion.py
+                  # Execute the script
+                  eval $CMD
 
             - name: 📊 Upload Logs (on failure)
               if: failure()
@@ -285,22 +222,17 @@ jobs:
                   echo "### 📊 Execution Results" >> $GITHUB_STEP_SUMMARY
                   echo "" >> $GITHUB_STEP_SUMMARY
 
-                  if not [ "${{ inputs.dry_run }}" ]; then
-                    if [ "${{ steps.ingestion.outcome }}" == "success" ]; then
-                        echo "✅ **Status**: Success" >> $GITHUB_STEP_SUMMARY
-                        echo "" >> $GITHUB_STEP_SUMMARY
-                        echo "Data has been successfully ingested to:" >> $GITHUB_STEP_SUMMARY
-                        echo "- 🪣 **S3 Bucket**: \`pb-f1-raw-data\`" >> $GITHUB_STEP_SUMMARY
-                        echo "- 🗄️ **Database**: Supabase (\`f1_prod_data\` schema)" >> $GITHUB_STEP_SUMMARY
-                    else
-                        echo "❌ **Status**: Failed" >> $GITHUB_STEP_SUMMARY
-                        echo "" >> $GITHUB_STEP_SUMMARY
-                        echo "Please check the job logs for details." >> $GITHUB_STEP_SUMMARY
-                        echo "Logs have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
-                    fi
-                  else
-                    echo "✅ Dry Run Completed" >> $GITHUB_STEP_SUMMARY
+                  if [ "${{ steps.ingestion.outcome }}" == "success" ]; then
+                    echo "✅ **Status**: Success" >> $GITHUB_STEP_SUMMARY
                     echo "" >> $GITHUB_STEP_SUMMARY
+                    echo "Data has been successfully ingested to:" >> $GITHUB_STEP_SUMMARY
+                    echo "- 🪣 **S3 Bucket**: \`pb-f1-raw-data\`" >> $GITHUB_STEP_SUMMARY
+                    echo "- 🗄️ **Database**: Supabase (\`f1_prod_data\` schema)" >> $GITHUB_STEP_SUMMARY
+                  else
+                    echo "❌ **Status**: Failed" >> $GITHUB_STEP_SUMMARY
+                    echo "" >> $GITHUB_STEP_SUMMARY
+                    echo "Please check the job logs for details." >> $GITHUB_STEP_SUMMARY
+                    echo "Logs have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
                   fi
 
                   echo "" >> $GITHUB_STEP_SUMMARY
@@ -342,8 +274,8 @@ jobs:
 
             - name: 📁 Setup Directories
               run: |
-                  mkdir -p /tmp/fastf1_cache /tmp/dagster_home /tmp/dagster/logs
-                  chmod -R 777 /tmp/fastf1_cache /tmp/dagster_home /tmp/dagster/logs
+                  mkdir -p /tmp/fastf1_cache /tmp/dagster_home monitoring/logs
+                  chmod -R 777 /tmp/fastf1_cache /tmp/dagster_home monitoring/logs
 
             - name: 🔄 Retry Ingestion (Attempt ${{ matrix.attempt }})
               env:
@@ -358,34 +290,24 @@ jobs:
                   FASTF1_CACHE_DIR: /tmp/fastf1_cache
                   FASTF1_CACHE_ENABLED: False
                   FASTF1_LOG_LEVEL: INFO
-                  LOG_DIR: /tmp/dagster/logs
+                  LOG_DIR: monitoring/logs
                   LOG_LEVEL: INFO
               run: |
-                  echo "🔄 Retry attempt (${{ matrix.attempt }}) of 3"
+                  echo "🔄 Retry attempt ${{ matrix.attempt }} of 3"
 
-                  # Same ingestion logic as main job
-                  cat > run_ingestion.py << 'EOFPYTHON'
-                  import sys
-                  from dagster import DagsterInstance, execute_job
-                  from dagster_project import defs
+                  # Build command
+                  CMD="python scripts/run_ingestion.py --year ${{ inputs.year }}"
 
-                  year = int("${{ inputs.year }}")
-                  event_name = "${{ inputs.event_name }}" or None
-                  session_type = "${{ inputs.session_type }}" or None
+                  if [ -n "${{ inputs.event_name }}" ]; then
+                    CMD="$CMD --event '${{ inputs.event_name }}'"
+                  fi
 
-                  job = defs.get_job_def('f1_configurable_session_job')
+                  if [ -n "${{ inputs.session_type }}" ]; then
+                    CMD="$CMD --session ${{ inputs.session_type }}"
+                  fi
 
-                  config = {'ops': {'f1_session_configurable': {'config': {'year': year}}}}
-                  if event_name:
-                      config['ops']['f1_session_configurable']['config']['event_name'] = event_name
-                  if session_type:
-                      config['ops']['f1_session_configurable']['config']['session_type'] = session_type
-
-                  result = execute_job(job, instance=DagsterInstance.get(), run_config=config)
-                  sys.exit(0 if result.success else 1)
-                  EOFPYTHON
-
-                  python run_ingestion.py
+                  # Execute
+                  eval $CMD
 
             - name: ✅ Retry Successful
               if: success()
