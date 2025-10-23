@@ -271,8 +271,11 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: dagster-logs-${{ github.run_id }}
-                  path: /tmp/monitoring/logs/
+                  path: |
+                      monitoring/logs/
+                      /tmp/dagster_home/
                   retention-days: 7
+                  if-no-files-found: warn
 
             - name: 📝 Job Summary
               if: always()
@@ -302,7 +305,7 @@ jobs:
 
     # Retry logic - runs if main job fails
     retry-on-failure:
-        name: Retry on Failure (Attempt ${{ matrix.attempt }}+1/3)
+        name: Retry on Failure (Attempt ${{ matrix.attempt }}/3)
         needs: ingest-f1-data
         if: failure()
         runs-on: ubuntu-latest
@@ -338,7 +341,7 @@ jobs:
                   mkdir -p /tmp/fastf1_cache /tmp/dagster_home /tmp/dagster/logs
                   chmod -R 777 /tmp/fastf1_cache /tmp/dagster_home /tmp/dagster/logs
 
-            - name: 🔄 Retry Ingestion (Attempt ${{ matrix.attempt }} + 1)
+            - name: 🔄 Retry Ingestion (Attempt ${{ matrix.attempt }})
               env:
                   ENVIRONMENT: production
                   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -354,7 +357,7 @@ jobs:
                   LOG_DIR: /tmp/dagster/logs
                   LOG_LEVEL: INFO
               run: |
-                  echo "🔄 Retry attempt (${{ matrix.attempt }} + 1) of 3"
+                  echo "🔄 Retry attempt (${{ matrix.attempt }}) of 3"
 
                   # Same ingestion logic as main job
                   cat > run_ingestion.py << 'EOFPYTHON'
@@ -383,7 +386,7 @@ jobs:
             - name: ✅ Retry Successful
               if: success()
               run: |
-                  echo "### ✅ Retry Successful (Attempt ${{ matrix.attempt }} + 1)" >> $GITHUB_STEP_SUMMARY
+                  echo "### ✅ Retry Successful (Attempt ${{ matrix.attempt }})" >> $GITHUB_STEP_SUMMARY
                   echo "" >> $GITHUB_STEP_SUMMARY
                   echo "Job completed successfully after retry." >> $GITHUB_STEP_SUMMARY
 
@@ -392,8 +395,11 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: retry-logs-${{ github.run_id }}-attempt-${{ matrix.attempt }}
-                  path: /tmp/dagster/logs/
+                  path: |
+                      monitoring/logs/
+                      /tmp/dagster_home/
                   retention-days: 7
+                  if-no-files-found: warn
 
     # Notification job - runs after all retries
     notify-final-status:
