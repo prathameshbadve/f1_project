@@ -43,5 +43,4 @@ jobs:
           echo "|-----------|-------|"
           echo "| **Event(s)** | ${EVENT_INPUT:-All Events (Full Season)} |"
           echo "| **Session(s)** | ${SESSION_INPUT:-All Sessions} |"
-          echo "| **Scope** | ${SCOPE} |"
           echo ""
