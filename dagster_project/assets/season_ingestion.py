@@ -210,11 +210,16 @@ def f1_2024_session_raw(context: AssetExecutionContext) -> Output[Dict[str, Any]
 class F1SessionConfig(Config):
     """
     Configuration for ingesting F1 sessions with flexible scope.
-
-    Supports three modes:
-    1. Single session: Provide year + event_name + session_type
-    2. Whole event: Provide year + event_name (ingests all sessions)
-    3. Whole season: Provide only year (ingests all events and sessions)
+    Supports multiple modes:
+    1. Single session: year + single event + single session
+    2. Multiple sessions from one event: year + single event + multiple sessions
+    3. Multiple events with one session type: year + multiple events + single session
+    4. Multiple events with multiple session types: year + multiple events + multiple sessions
+    5. All sessions from one event: year + single event (no session type)
+    6. All sessions from multiple events: year + multiple events (no session type)
+    7. One session type from all events: year + single session type (no event)
+    8. Multiple session types from all events: year + multiple session types (no event)
+    9. Whole season: year only (no events, no sessions)
     """
 
     year: int
@@ -278,7 +283,7 @@ def f1_session_configurable(
         if event_name and len(event_name) == 1:
             # Mode 1: Single session from one grand prix event
             scope = "one_event_one_session"
-            sessions_to_ingest = [f"{event_name}|{session_type}"]
+            sessions_to_ingest = [(event_name, session_type)]
             context.log.info(
                 f"Mode: One Event One Session - {year} {event_name} {session_type}"
             )
@@ -289,7 +294,7 @@ def f1_session_configurable(
         elif event_name and len(event_name) > 1:
             # Mode 2: Same session type from multiple grand prix event
             scope = "multiple_events_one_session"
-            sessions_to_ingest = [f"{e}|{session_type}" for e in event_name]
+            sessions_to_ingest = [(e, session_type) for e in event_name]
             context.log.info(
                 f"Mode: Multiple Events, One Session - {year} {event_name} {session_type} (Total: {len(sessions_to_ingest)})"
             )
@@ -310,7 +315,7 @@ def f1_session_configurable(
             sessions_to_ingest = []
 
             for event in events:
-                sessions_to_ingest.append(f"{event}|{session_type}")
+                sessions_to_ingest.append((event, session_type))
 
             context.log.info(
                 f"Mode: All Events, One Session - {session_type} files from all GPs of {year} (Total: {len(sessions_to_ingest)})"
@@ -327,7 +332,7 @@ def f1_session_configurable(
         if event_name and len(event_name) == 1:
             # Mode 4: Multiple sessions from one grand prix event
             scope = "one_event_multiple_sessions"
-            sessions_to_ingest = [f"{event_name}|{s}" for s in session_type]
+            sessions_to_ingest = [(event_name, s) for s in session_type]
             context.log.info(
                 f"Mode: One Event, Multiple Sessions - {year} {event_name} {session_type}"
             )
@@ -341,7 +346,7 @@ def f1_session_configurable(
         elif event_name and len(event_name) > 1:
             # Mode 5: Multiple session type from multiple grand prix event
             scope = "multiple_events_multiple_sessions"
-            sessions_to_ingest = [f"{e}|{s}" for e in event_name for s in session_type]
+            sessions_to_ingest = [(e, s) for e in event_name for s in session_type]
             context.log.info(
                 f"Mode: Multiple Events, Multiple Sessions - {year} {event_name} {session_type} (Total: {len(sessions_to_ingest)})"
             )
@@ -362,7 +367,7 @@ def f1_session_configurable(
             sessions_to_ingest = []
 
             for event in events:
-                sessions_to_ingest.extend([f"{event}|{s}" for s in session_type])
+                sessions_to_ingest.extend([(event, s) for s in session_type])
 
             context.log.info(
                 f"Mode: All Events, Multiple Sessions - {session_type} files from all GPs of {year} (Total: {len(sessions_to_ingest)})"
@@ -383,7 +388,7 @@ def f1_session_configurable(
             # Get all sessions for this event from schedule loader
             sessions = schedule_loader.get_sessions_to_load(year, event_name)
 
-            sessions_to_ingest = [f"{event_name}|{s}" for s in sessions]
+            sessions_to_ingest = [(event_name, s) for s in sessions]
             num_of_sessions = len(sessions_to_ingest)
 
             context.log.info(
@@ -405,7 +410,7 @@ def f1_session_configurable(
             for event in event_name:
                 # Get the session to ingest for the event
                 sessions = schedule_loader.get_sessions_to_load(year, event)
-                sessions_to_ingest.extend([f"{event}|{s}" for s in sessions])
+                sessions_to_ingest.extend([(event, s) for s in sessions])
 
             context.log.info(
                 f"Mode: Multiple Events, All Sessions for - {year} {event_name} (Total: {len(sessions_to_ingest)})"
@@ -431,7 +436,7 @@ def f1_session_configurable(
                 sessions = schedule_loader.get_sessions_to_load(year, event)
 
                 for session in sessions:
-                    sessions_to_ingest.append(f"{event}|{session}")
+                    sessions_to_ingest.append((event, session))
 
             context.log.info(f"Mode: Whole Season - {year}")
             context.log.info(f"  Events: {len(events)}")
@@ -458,7 +463,7 @@ def f1_session_configurable(
     dagster_logger.info("=" * 70)
 
     for idx, partition_key in enumerate(sessions_to_ingest, 1):
-        event, session = partition_key.split("|")
+        event, session = partition_key
 
         context.log.info(f"[{idx}/{len(sessions_to_ingest)}] {year} {event} {session}")
         dagster_logger.info(
