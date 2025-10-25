@@ -1,0 +1,68 @@
+name: Test Workflow
+
+on:
+    push:
+        branches: [dev]
+
+env:
+    PYTHON_VERSION: "3.11.4"
+
+jobs:
+    code-quality:
+        name: Code Quality
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+                  cache: "pip"
+
+            - name: Install dependencies
+              run: |
+                  pip install --upgrade pip
+                  pip install -r requirements.txt
+
+            # Code formatting with Black
+            - name: Check code formatting with Black
+              run: |
+                  black --check src/ tests/ config/
+
+            # Linting with Ruff
+            - name: Lint with Ruff
+              run: |
+                  ruff check src/ tests/ config/
+
+    unit-tests:
+        name: Unit Tests
+        runs-on: ubuntu-latest
+        needs: code-quality
+
+        steps:
+            - name: Jon configuration
+              run: |
+                  # Store inputs in variables with proper quoting
+                  EVENT_INPUT='${{ inputs.event_name }}'
+                  SESSION_INPUT='${{ inputs.session_type }}'
+
+                  # Add event names if provided
+                  if [ -n "$EVENT_INPUT" ]; then
+                      # Use IFS (Internal Field Separator) to split by comma
+                      IFS=',' read -ra EVENTS <<< "$EVENT_INPUT"
+                      for event in "${EVENTS[@]}"; do
+                          # Trim whitespace
+                          event=$(echo "$event" | xargs)
+                          echo "--event \"$event\""
+                      done
+                  fi
+
+                  # Add session types if provided
+                  if [ -n "$SESSION_INPUT" ]; then
+                      # Replace commas with spaces
+                      SESSIONS=$(echo "$SESSION_INPUT" | tr ',' ' ')
+                      echo "--session $SESSIONS"
+                  fi
