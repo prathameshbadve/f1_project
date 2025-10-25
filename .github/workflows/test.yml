@@ -28,19 +28,11 @@ jobs:
           SESSION_INPUT='${{ inputs.session_type }}'
           # Add event names if provided
           if [ -n "$EVENT_INPUT" ]; then
-            CMD="$CMD --event $EVENT_INPUT""
+            CMD="$CMD --event $EVENT_INPUT"
           fi
           # Add session types if provided
           if [ -n "$SESSION_INPUT" ]; then
-            CMD="$CMD --session $SESSIONS"
+            CMD="$CMD --session $SESSION_INPUT"
           fi
 
           echo "Executing: $CMD"
-
-          echo "### 🏎️ F1 Data Ingestion Configuration"
-          echo ""
-          echo "| Parameter | Value |"
-          echo "|-----------|-------|"
-          echo "| **Event(s)** | ${EVENT_INPUT:-All Events (Full Season)} |"
-          echo "| **Session(s)** | ${SESSION_INPUT:-All Sessions} |"
-          echo ""
