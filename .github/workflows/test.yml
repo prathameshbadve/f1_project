@@ -28,21 +28,20 @@ jobs:
           SESSION_INPUT='${{ inputs.session_type }}'
           # Add event names if provided
           if [ -n "$EVENT_INPUT" ]; then
-            # Use IFS (Internal Field Separator) to split by comma
-            IFS=',' read -ra EVENTS <<< "$EVENT_INPUT"
-            for event in "${EVENTS[@]}"; do
-              # Trim whitespace
-              event=$(echo "$event" | xargs)
-              echo "--event \"$event\""
-              CMD="$CMD --event \"$event\""
-            done
+            CMD="$CMD --event $EVENT_INPUT""
           fi
           # Add session types if provided
           if [ -n "$SESSION_INPUT" ]; then
-            # Replace commas with spaces
-            SESSIONS=$(echo "$SESSION_INPUT" | tr ',' ' ')
-            echo "--session $SESSIONS"
             CMD="$CMD --session $SESSIONS"
           fi
 
           echo "Executing: $CMD"
+
+          echo "### 🏎️ F1 Data Ingestion Configuration"
+          echo ""
+          echo "| Parameter | Value |"
+          echo "|-----------|-------|"
+          echo "| **Event(s)** | ${EVENT_INPUT:-All Events (Full Season)} |"
+          echo "| **Session(s)** | ${SESSION_INPUT:-All Sessions} |"
+          echo "| **Scope** | ${SCOPE} |"
+          echo ""
