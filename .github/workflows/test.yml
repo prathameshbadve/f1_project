@@ -21,7 +21,7 @@ jobs:
       - name: Job configuration
         run: |
           # Python command
-          CMD="command --year 2024"
+          CMD="python test_script.py"
 
           # Store inputs in variables with proper quoting
           EVENT_INPUT='${{ inputs.event_name }}'
@@ -74,20 +74,12 @@ jobs:
 
           # Add event names if provided
           if [ -n "$EVENT_INPUT" ]; then
-            # Use IFS (Internal Field Separator) to split by comma
-            IFS=',' read -ra EVENTS <<< "$EVENT_INPUT"
-            for event in "${EVENTS[@]}"; do
-              # Trim whitespace
-              event=$(echo "$event" | xargs)
-              CMD="$CMD --event \"$event\""
-            done
+            CMD="$CMD --event $EVENT_INPUT"
           fi
 
           # Add session types if provided
           if [ -n "$SESSION_INPUT" ]; then
-            # Replace commas with spaces
-            SESSIONS=$(echo "$SESSION_INPUT" | tr ',' ' ')
-            CMD="$CMD --session $SESSIONS"
+            CMD="$CMD --session $SESSION_INPUT"
           fi
 
           echo "Executing: $CMD"
