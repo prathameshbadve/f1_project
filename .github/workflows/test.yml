@@ -39,3 +39,45 @@ jobs:
             SESSIONS=$(echo "$SESSION_INPUT" | tr ',' ' ')
             echo "--session $SESSIONS"
           fi
+
+          # Determine scope
+          if [ -n "$SESSION_INPUT" ] && [ -n "$EVENT_INPUT" ]; then
+            # Count number of items
+            EVENT_COUNT=$(echo "$EVENT_INPUT" | tr ',' '\n' | wc -l)
+            SESSION_COUNT=$(echo "$SESSION_INPUT" | tr ',' '\n' | wc -l)
+            
+            if [ "$EVENT_COUNT" -eq 1 ] && [ "$SESSION_COUNT" -eq 1 ]; then
+              SCOPE="Mode 1: Single Session"
+            elif [ "$EVENT_COUNT" -eq 1 ] && [ "$SESSION_COUNT" -gt 1 ]; then
+              SCOPE="Mode 2: Multiple Sessions from One Event"
+            elif [ "$EVENT_COUNT" -gt 1 ] && [ "$SESSION_COUNT" -eq 1 ]; then
+              SCOPE="Mode 3: One Session Type from Multiple Events"
+            else
+              SCOPE="Mode 4: Multiple Session Types from Multiple Events"
+            fi
+          elif [ -n "$EVENT_INPUT" ] && [ -z "$SESSION_INPUT" ]; then
+            EVENT_COUNT=$(echo "$EVENT_INPUT" | tr ',' '\n' | wc -l)
+            if [ "$EVENT_COUNT" -eq 1 ]; then
+              SCOPE="Mode 5: All Sessions from One Event"
+            else
+              SCOPE="Mode 6: All Sessions from Multiple Events"
+            fi
+          elif [ -z "$EVENT_INPUT" ] && [ -n "$SESSION_INPUT" ]; then
+            SESSION_COUNT=$(echo "$SESSION_INPUT" | tr ',' '\n' | wc -l)
+            if [ "$SESSION_COUNT" -eq 1 ]; then
+              SCOPE="Mode 7: One Session Type from All Events"
+            else
+              SCOPE="Mode 8: Multiple Session Types from All Events"
+            fi
+          else
+            SCOPE="Mode 9: Whole Season (All Events & Sessions)"
+          fi
+
+          echo "### 🏎️ F1 Data Ingestion Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Event(s)** | ${EVENT_INPUT:-All Events (Full Season)} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Session(s)** | ${SESSION_INPUT:-All Sessions} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Scope** | ${SCOPE} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
