@@ -75,14 +75,14 @@ def run_ingestion(
         True if successful, False otherwise
     """
 
-    logger.info("%s", "\n" + "=" * 70)
+    logger.info("%s", "=" * 70)
     logger.info("F1 Data Ingestion")
     logger.info("=" * 70)
     logger.info("Year: %d", year)
     logger.info("Event(s): %s", event_name if event_name else "All Events")
     logger.info("Session(s): %s", session_type if session_type else "All Sessions")
     logger.info("Dry Run: %s", dry_run)
-    logger.info("%s", "=" * 70 + "\n")
+    logger.info("%s", "=" * 70)
 
     # Determine mode for dry run logging
     if dry_run:
@@ -202,7 +202,7 @@ def run_ingestion(
         return False
 
     except Exception as e:  # pylint: disable=broad-except
-        logger.error("\n❌ Error materializing asset: %s", str(e))
+        logger.error("❌ Error materializing asset: %s", str(e))
         traceback.print_exc()
         return False
 
