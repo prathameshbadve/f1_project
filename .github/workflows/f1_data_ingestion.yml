@@ -113,6 +113,16 @@ jobs:
           chmod -R 777 /tmp/fastf1_cache /tmp/dagster_home monitoring/logs
           echo "✅ Directories created"
 
+      - name: 📝 Setup Dagster Configuration
+        run: |
+          if [ -f "dagster.yaml" ]; then
+            cp dagster_project/dagster.yaml /tmp/dagster_home/dagster.yaml
+            echo "✅ Dagster configuration copied"
+          else
+            touch /tmp/dagster_home/dagster.yaml
+            echo "⚠️ No dagster.yaml found, created empty file"
+          fi
+
       - name: 🔍 Validate Configuration
         env:
           ENVIRONMENT: production
