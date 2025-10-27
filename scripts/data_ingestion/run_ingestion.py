@@ -67,8 +67,8 @@ def run_ingestion(
 
     Args:
         year: Season year (e.g., 2024)
-        event_name: List of event names (e.g., ["Italian Grand Prix"]), None for all events
-        session_type: List of session types (e.g., ["R", "Q"]), None for all sessions
+        event_name: List of event names (e.g., ["Italian Grand Prix"] or ["Italian Grand Prix", "Monaco Grand Prix"]), None for all events
+        session_type: List of session types (e.g., ["R", "Q"], ["R"]), None for all sessions
         dry_run: If True, validate only without ingesting data
 
     Returns:
@@ -264,7 +264,6 @@ Examples:
         type=str,
         nargs="+",  # Accept multiple values
         default=None,
-        choices=["R", "Q", "S", "SS", "SQ", "FP1", "FP2", "FP3"],
         help="Session type(s). Examples: R or R Q S. Leave empty for all sessions.",
     )
 
