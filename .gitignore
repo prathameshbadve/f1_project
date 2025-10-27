@@ -276,3 +276,6 @@ docker/.env.production
 # AWS credentials (NEVER commit these!)
 .aws/
 aws-credentials.json
+
+# Guides
+.guides/
