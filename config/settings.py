@@ -467,6 +467,16 @@ class MLFlowConfig(Config):
         return f"MLFLowConfig({', '.join(f'{k}={v}' for k, v in config_dict.items())})"
 
 
+class RedisConfig:
+    """Congifuration for Redis Cache"""
+
+    def __init__(self):
+        self.host = os.getenv("REDIS_HOST", "localhost")
+        self.port = int(os.getenv("REDIS_PORT", "6379"))
+        self.db = int(os.getenv("REDIS_DB", "0"))
+        self.password = os.getenv("REDIS_PASSWORD", None)
+
+
 # Set up FastF1 config
 fastf1_config = FastF1Config()
 fastf1_config.setup_fastf1()
@@ -479,6 +489,9 @@ database_config = DatabaseConfig()
 
 # Set up MLFlow config
 mlflow_config = MLFlowConfig()
+
+# Global instance
+redis_config = RedisConfig()
 
 
 class DagsterConfig(Config):
