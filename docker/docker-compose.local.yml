@@ -40,6 +40,47 @@ services:
     networks:
       - f1-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: f1-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    env_file: .env.development
+    command: sh -c "redis-server
+      -- appendonly yes
+      -- maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass $${REDIS_PASSWORD}"
+    healthcheck:
+      test:
+        ["CMD", "sh", "-c", "redis-cli -a $${REDIS_PASSWORD} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - f1-network
+    restart: unless-stopped
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: f1-redis-commander
+    ports:
+      - "8081:8081"
+    env_file: .env.development
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0:$${REDIS_PASSWORD}
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - f1-network
+    restart: unless-stopped
+
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.10.0
     container_name: f1-mlflow
@@ -94,6 +135,8 @@ services:
         condition: service_healthy
       mlflow:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/server_info"]
       interval: 30s
@@ -126,6 +169,8 @@ services:
         condition: service_healthy
       mlflow:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       dagster-webserver:
         condition: service_started
     networks:
@@ -141,6 +186,8 @@ volumes:
     name: f1-mlflow-data
   dagster_logs:
     name: f1-dagster-logs
+  redis_data:
+    name: f1-redis-data
 
 networks:
   f1-network:
