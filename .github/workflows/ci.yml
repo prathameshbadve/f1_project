@@ -157,7 +157,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15-alpine
+        image: postgres:16-alpine
         ports:
           - 5432:5432
         env:
@@ -229,6 +229,7 @@ jobs:
         run: |
           pytest tests/integration/ -v \
             --cov=src \
+            --cov=config \
             --cov-report=xml \
             --cov-report=term \
             -m "integration and not slow" \
