@@ -6,6 +6,7 @@ Instead of creating 100+ individual assets, we create one partitioned asset
 that can handle any session based on the partition key.
 """
 
+import time
 from typing import Optional, List, Dict, Any
 
 import pandas as pd
@@ -269,6 +270,9 @@ def f1_session_configurable(
                 }
             )
             failed += 1
+
+        # Sleep for 3 seconds before moving to the next sesssion.
+        time.sleep(3)
 
     context.log.info("=" * 70)
     context.log.info("Ingestion complete!")
