@@ -236,14 +236,14 @@ class FastF1Config(Config):
     def _get_session_types(self):
         """Retrieve session types based on environment variables."""
 
-        session_types = ["R"]
+        session_types = ["Race"]
 
         if self.include_free_practice:
-            session_types.extend(["FP1", "FP2", "FP3"])
+            session_types.extend(["Practice 1", "Practice 2", "Practice 3"])
         if self.include_qualifying:
-            session_types.append("Q")
+            session_types.append("Qualifying")
         if self.include_sprint:
-            session_types.extend(["S", "SS", "SQ"])
+            session_types.extend(["Sprint", "Sprint Shootout", "Sprint Qualifying"])
 
         return session_types
 
@@ -477,23 +477,6 @@ class RedisConfig:
         self.password = os.getenv("REDIS_PASSWORD", None)
 
 
-# Set up FastF1 config
-fastf1_config = FastF1Config()
-fastf1_config.setup_fastf1()
-
-# Set up Storage Config
-storage_config = StorageConfig()
-
-# Set up Database config
-database_config = DatabaseConfig()
-
-# Set up MLFlow config
-mlflow_config = MLFlowConfig()
-
-# Global instance
-redis_config = RedisConfig()
-
-
 class DagsterConfig(Config):
     """Dagster-specific configuration"""
 
@@ -606,3 +589,23 @@ def is_production() -> bool:
     """Check if running in production environment"""
 
     return ENVIRONMENT == Environment.PRODUCTION.value
+
+
+# Set up FastF1 config
+fastf1_config = FastF1Config()
+fastf1_config.setup_fastf1()
+
+# Set up Storage Config
+storage_config = StorageConfig()
+
+# Set up Database config
+database_config = DatabaseConfig()
+
+# Set up MLFlow config
+mlflow_config = MLFlowConfig()
+
+# Set up Redis
+redis_config = RedisConfig()
+
+# Set up Dagster
+dagster_config = DagsterConfig()
