@@ -10,9 +10,9 @@ import pandas as pd
 from config.settings import fastf1_config, storage_config
 from config.logging import get_logger
 
-from clients.fastf1_client import FastF1Client
+from src.clients.fastf1_client import FastF1Client
+from src.clients.storage_client import StorageClient
 from src.data_ingestion.schedule_loader import ScheduleLoader
-from clients.storage_client import StorageClient
 
 
 class SessionLoader:
