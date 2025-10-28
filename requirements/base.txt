@@ -13,3 +13,4 @@ python-dotenv==1.1.1
 responses==0.25.8
 setuptools==65.5.0
 tinycss2==1.4.0
+redis==7.0.0
