@@ -10,8 +10,8 @@ from dagster import Definitions, load_assets_from_modules
 from dagster_project import assets
 from dagster_project.resources import storage_resource
 from dagster_project.jobs import (
-    italian_gp_2024_weekend_job,
-    f1_2024_season_all_sessions_job,
+    # italian_gp_2024_weekend_job,
+    # f1_2024_season_all_sessions_job,
     f1_configurable_session_job,
 )
 
@@ -27,9 +27,9 @@ defs = Definitions(
     assets=all_assets,
     jobs=[
         # Race weekend jobs
-        italian_gp_2024_weekend_job,
-        # Season job (materialize all partitions or select specific ones in UI)
-        f1_2024_season_all_sessions_job,
+        # italian_gp_2024_weekend_job,
+        # # Season job (materialize all partitions or select specific ones in UI)
+        # f1_2024_season_all_sessions_job,
         # Configurable job (pass year/event/session at runtime)
         f1_configurable_session_job,
     ],
