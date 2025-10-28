@@ -9,9 +9,9 @@ import pandas as pd
 from config.settings import fastf1_config, storage_config
 from config.logging import get_logger
 
-from src.data_ingestion.fastf1_client import FastF1Client
-from src.data_ingestion.storage_client import StorageClient
-from src.data_ingestion.redis_client import RedisClient
+from clients.fastf1_client import FastF1Client
+from clients.storage_client import StorageClient
+from clients.redis_client import RedisClient
 
 
 class ScheduleLoader:

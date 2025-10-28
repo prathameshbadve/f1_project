@@ -22,8 +22,8 @@ import pandas as pd
 from config.logging import setup_logging
 from config.settings import StorageConfig
 
-from src.data_ingestion.storage_client import StorageClient
-from src.data_ingestion.fastf1_client import FastF1Client
+from clients.storage_client import StorageClient
+from clients.fastf1_client import FastF1Client
 from src.data_ingestion.schemas import DataValidator
 from src.data_ingestion.schedule_loader import ScheduleLoader
 from src.data_ingestion.session_data_loader import SessionLoader
