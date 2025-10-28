@@ -37,10 +37,14 @@ class StorageClient:
                 secure=self.config.secure,
                 cert_check=False if not self.config.secure else True,
             )
-            self.logger.info("Storage client initialized: %s", self.config.endpoint)
+            self.logger.info(
+                "| | | | | | Storage client initialized: %s", self.config.endpoint
+            )
 
         except Exception as e:
-            self.logger.error("Failed to initialize storage client: %s", str(e))
+            self.logger.error(
+                "| | | | | | Failed to initialize storage client: %s", str(e)
+            )
             raise
 
         # Ensure bucket exists
@@ -54,14 +58,17 @@ class StorageClient:
         try:
             if not self.client.bucket_exists(self.config.raw_bucket_name):
                 self.client.make_bucket(self.config.raw_bucket_name)
-                self.logger.info("Created bucket: %s", self.config.raw_bucket_name)
+                self.logger.info(
+                    "| | | | | | Successfully created bucket: %s",
+                    self.config.raw_bucket_name,
+                )
             else:
                 self.logger.debug(
-                    "Bucket already exists: %s", self.config.raw_bucket_name
+                    "| | | | | | Bucket already exists: %s", self.config.raw_bucket_name
                 )
 
         except S3Error as e:
-            self.logger.error("Error checking/creating bucket: %s", str(e))
+            self.logger.error("| | | | | | Error checking/creating bucket: %s", str(e))
             raise
 
     def upload_dataframe(
@@ -87,7 +94,9 @@ class StorageClient:
         """
 
         if df is None or df.empty:
-            self.logger.warning("Cannot upload empty DataFrame to %s", object_key)
+            self.logger.warning(
+                "| | | | | | Cannot upload empty DataFrame to %s", object_key
+            )
             return False
 
         try:
@@ -112,7 +121,7 @@ class StorageClient:
 
             size_mb = size_bytes / (1024 * 1024)
             self.logger.info(
-                "✅ Uploaded %s (%d rows, %.2f MB)",
+                "| | | | | | ✅ Successfully uploaded %s (%d rows, %.2f MB)",
                 object_key,
                 len(df),
                 size_mb,
@@ -120,7 +129,9 @@ class StorageClient:
             return True
 
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.error("❌ Failed to upload %s: %s", object_key, str(e))
+            self.logger.error(
+                "| | | | | | ❌ Failed to upload %s: %s", object_key, str(e)
+            )
             return False
 
     def download_dataframe(self, object_key: str) -> Optional[pd.DataFrame]:
@@ -152,18 +163,22 @@ class StorageClient:
             for col in timedelta_cols:
                 df[col] = df[col].replace({pd.NaT: None})
 
-            self.logger.info("✅ Downloaded %s (%d rows)", object_key, len(df))
+            self.logger.info(
+                "| | | | | | ✅ Downloaded %s (%d rows)", object_key, len(df)
+            )
             return df
 
         except S3Error as e:
             if e.code == "NoSuchKey":
-                self.logger.warning("Object not found: %s", object_key)
+                self.logger.warning("| | | | | | Object not found: %s", object_key)
             else:
-                self.logger.error("❌ Failed to download %s: %s", object_key, e)
+                self.logger.error(
+                    "| | | | | | ❌ Failed to download %s: %s", object_key, e
+                )
             return None
 
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.error("❌ Failed to download %s: %s", object_key, e)
+            self.logger.error("| | | | | | ❌ Failed to download %s: %s", object_key, e)
             return None
 
         finally:
@@ -186,14 +201,16 @@ class StorageClient:
             self.client.stat_object(
                 bucket_name=self.config.raw_bucket_name, object_name=object_key
             )
-            self.logger.info("Object %s exists.", object_key)
+            self.logger.info("| | | | | | Object %s exists.", object_key)
             return True
         except S3Error as e:
             if e.code == "NoSuchKey":
-                self.logger.info("No such key exists.")
+                self.logger.info("| | | | | | No such key exists.")
                 return False
             else:
-                self.logger.error("Error checking object existence: %s", str(e))
+                self.logger.error(
+                    "| | | | | | Error checking object existence: %s", str(e)
+                )
                 return False
 
     def get_object_size_mb(self, object_key: str) -> float:
@@ -228,7 +245,7 @@ class StorageClient:
 
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error(
-                "Error getting size for object '%s': %s",
+                "| | | | | | Error getting size for object '%s': %s",
                 object_key,
                 str(e),
             )
@@ -258,12 +275,14 @@ class StorageClient:
 
             object_keys = [obj.object_name for obj in objects]
             self.logger.debug(
-                "Found %d objects with prefix '%s'", len(object_keys), prefix
+                "| | | | | | Found %d objects with prefix '%s'",
+                len(object_keys),
+                prefix,
             )
             return object_keys
 
         except S3Error as e:
-            self.logger.error("Failed to list objects: %s", str(e))
+            self.logger.error("| | | | | | Failed to list objects: %s", str(e))
             return []
 
     def delete_object(self, object_key: str) -> bool:
@@ -281,10 +300,10 @@ class StorageClient:
             self.client.remove_object(
                 bucket_name=self.config.raw_bucket_name, object_name=object_key
             )
-            self.logger.info("Deleted object: %s", object_key)
+            self.logger.info("| | | | | | Deleted object: %s", object_key)
             return True
         except S3Error as e:
-            self.logger.error("Failed to delete %s: %s", object_key, e)
+            self.logger.error("| | | | | | Failed to delete %s: %s", object_key, e)
             return False
 
     def get_object_metadata(self, object_key: str) -> Optional[Dict[str, Any]]:
@@ -309,11 +328,13 @@ class StorageClient:
                 "content_type": stat.content_type,
                 "etag": stat.etag,
             }
-            self.logger.info("Fetched metadata for %s", object_key)
+            self.logger.info("| | | | | | Fetched metadata for %s", object_key)
             return metadata
 
         except S3Error as e:
-            self.logger.error("Failed to get metadata for %s: %s", object_key, str(e))
+            self.logger.error(
+                "| | | | | | Failed to get metadata for %s: %s", object_key, str(e)
+            )
             return None
 
     def build_object_key(
@@ -349,7 +370,9 @@ class StorageClient:
         if data_type == "schedule":
             object_key = f"{year}/season_{data_type}.parquet"
             self.logger.info(
-                "Built object key for season schedule %d: %s", year, object_key
+                "| | | | | | Built object key for season schedule %d: %s",
+                year,
+                object_key,
             )
             return object_key
 
@@ -366,7 +389,7 @@ class StorageClient:
         object_key = f"{year}/{clean_event}/{session_type}/{data_type}.parquet"
 
         self.logger.info(
-            "Built object key for %s of %s %s %d: %s",
+            "| | | | | | Built object key for %s of %s %s %d: %s",
             data_type,
             event_name,
             session_type,
@@ -431,7 +454,9 @@ class StorageClient:
                 success = self.upload_dataframe(df, object_key)
                 upload_status[storage_name] = success
             else:
-                self.logger.debug("Skipping %s - no data available", storage_name)
+                self.logger.debug(
+                    "| | | | | | Skipping %s - no data available", storage_name
+                )
                 upload_status[storage_name] = False
 
         return upload_status

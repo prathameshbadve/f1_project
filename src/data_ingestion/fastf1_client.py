@@ -26,7 +26,7 @@ class FastF1Client:
                 year=year, include_testing=self.config.include_testing
             )
             self.logger.info(
-                "Loaded schedule for season %d: %d total events. Testing included = %s",
+                "| | | | | | Successfully loaded schedule for season %d: %d total events. Testing included = %s",
                 year,
                 len(schedule),
                 self.config.include_testing,
@@ -34,7 +34,7 @@ class FastF1Client:
             return schedule
 
         except Exception as e:
-            self.logger.error("Error loading schedule for %d: %s", year, e)
+            self.logger.error("| | | | | | Error loading schedule for %d: %s", year, e)
             raise
 
     def get_session(self, year: int, event: str, session: str) -> fastf1.core.Session:
@@ -52,9 +52,11 @@ class FastF1Client:
                 load_weather = self.config.enable_weather_data
                 load_race_control_messages = self.config.enable_race_control_messages
 
-                self.logger.info("Loading session %s %s %d", session, event, year)
-                self.logger.info(
-                    "Laps: %s, Telemetry: %s, Weather: %s, Race Control Messages: %s",
+                self.logger.debug(
+                    "| | | | | | Loading session %s %s %d", session, event, year
+                )
+                self.logger.debug(
+                    "| | | | | | Laps: %s, Telemetry: %s, Weather: %s, Race Control Messages: %s",
                     load_laps,
                     load_telemetry,
                     load_weather,
@@ -69,7 +71,7 @@ class FastF1Client:
                 )
 
                 self.logger.info(
-                    "Successfully loaded session object for %s %s %s",
+                    "| | | | | | Successfully loaded session object for %s %s %s",
                     session,
                     event,
                     year,
@@ -79,7 +81,11 @@ class FastF1Client:
 
         except Exception as e:
             self.logger.error(
-                "Error loading session %d %s %s: %s", year, event, session, e
+                "| | | | | | Error loading session %d %s %s: %s",
+                year,
+                event,
+                session,
+                e,
             )
             raise
 
@@ -91,20 +97,24 @@ class FastF1Client:
         if sessions is None:
             sessions = self.config.session_types
 
+        total_objects = len(events) * len(sessions)
+
         session_objs = {}
 
+        object_count = 1
         for event in events:
             session_objs[event] = {}
             for session in sessions:
-                try:
-                    session_obj = self.get_session(year, event, session)
-                    session_objs[event][session] = session_obj
-                    self.logger.info("Loaded %d %s %s", year, event, session)
-                except Exception as e:  # pylint: disable=broad-except
-                    self.logger.warning(
-                        "Could not load %d %s %s: %s", year, event, session, e
-                    )
-                    session_objs[event][session] = None
+                self.logger.info(
+                    "| | | | | | Processing sessoin [%d/%d]: %d %s %s",
+                    object_count,
+                    total_objects,
+                    year,
+                    event,
+                    session,
+                )
+                session_obj = self.get_session(year, event, session)
+                session_objs[event][session] = session_obj
 
         return session_objs
 
@@ -117,4 +127,4 @@ class FastF1Client:
         """Clear FastF1 cache"""
 
         fastf1.Cache.clear_cache(deep=deep)
-        self.logger.info("Cache cleared (deep=%s)", deep)
+        self.logger.info("| | | | | | Cache cleared (deep=%s)", deep)
