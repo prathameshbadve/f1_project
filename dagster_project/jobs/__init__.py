@@ -9,38 +9,38 @@ Jobs group related assets together for orchestration.
 from dagster import define_asset_job, AssetSelection
 
 
-# ============================================================================
-# RACE WEEKEND JOBS
-# ============================================================================
+# # ============================================================================
+# # RACE WEEKEND JOBS
+# # ============================================================================
 
 
-italian_gp_2024_weekend_job = define_asset_job(
-    name="italian_gp_2024_weekend",
-    description="Ingest all sessions from Italian Grand Prix 2024 weekend",
-    selection=AssetSelection.groups("raw_italian_gp_2024"),
-    tags={
-        "event": "Italian Grand Prix",
-        "year": "2024",
-        "type": "race_weekend",
-    },
-)
+# italian_gp_2024_weekend_job = define_asset_job(
+#     name="italian_gp_2024_weekend",
+#     description="Ingest all sessions from Italian Grand Prix 2024 weekend",
+#     selection=AssetSelection.groups("raw_italian_gp_2024"),
+#     tags={
+#         "event": "Italian Grand Prix",
+#         "year": "2024",
+#         "type": "race_weekend",
+#     },
+# )
 
 
-# ============================================================================
-# SEASON JOBS
-# ============================================================================
+# # ============================================================================
+# # SEASON JOBS
+# # ============================================================================
 
 
-f1_2024_season_all_sessions_job = define_asset_job(
-    name="f1_2024_season_all_sessions",
-    description="Ingest ALL sessions for 2024 season (100+ sessions)",
-    selection=AssetSelection.groups("raw_2024_season"),
-    tags={
-        "year": "2024",
-        "type": "full_season",
-        "scope": "all_sessions",
-    },
-)
+# f1_2024_season_all_sessions_job = define_asset_job(
+#     name="f1_2024_season_all_sessions",
+#     description="Ingest ALL sessions for 2024 season (100+ sessions)",
+#     selection=AssetSelection.groups("raw_2024_season"),
+#     tags={
+#         "year": "2024",
+#         "type": "full_season",
+#         "scope": "all_sessions",
+#     },
+# )
 
 
 # ============================================================================
