@@ -93,14 +93,14 @@ def f1_session_configurable(
         if events and len(events) == 1:
             # Mode 1: Single session from one grand prix event
             scope = "one_event_one_session"
-            sessions_to_ingest = [(events, sessions)]
+            sessions_to_ingest = [(events[0], sessions[0])]
             context.log.info("Mode: One Event, One Session")
             logger.info("Mode: One Event, One Session")
 
         elif events and len(events) > 1:
             # Mode 2: Same session type from multiple grand prix event
             scope = "multiple_events_one_session"
-            sessions_to_ingest = [(e, sessions) for e in events]
+            sessions_to_ingest = [(e, sessions[0]) for e in events]
             context.log.info("Mode: Multiple Events, One Session")
             logger.info("Mode: Multiple Events, One Session")
 
@@ -113,7 +113,7 @@ def f1_session_configurable(
             sessions_to_ingest = []
 
             for event in events:
-                sessions_to_ingest.append((event, sessions))
+                sessions_to_ingest.append((event, sessions[0]))
 
             context.log.info("Mode: All Events, One Session")
             logger.info("Mode: All Events, One Session")
@@ -124,7 +124,7 @@ def f1_session_configurable(
         if events and len(events) == 1:
             # Mode 4: Multiple sessions from one grand prix event
             scope = "one_event_multiple_sessions"
-            sessions_to_ingest = [(events, s) for s in sessions]
+            sessions_to_ingest = [(events[0], s) for s in sessions]
             context.log.info("Mode: One Event, Multiple Sessions")
             logger.info("Mode: One Event, Multiple Sessions")
 
@@ -157,9 +157,9 @@ def f1_session_configurable(
             scope = "one_event_all_sessions"
 
             # Get all sessions for this event from schedule loader
-            sessions = schedule_loader.get_sessions_to_load(year, events)
+            sessions = schedule_loader.get_sessions_to_load(year, events[0])
 
-            sessions_to_ingest = [(events, s) for s in sessions]
+            sessions_to_ingest = [(events[0], s) for s in sessions]
 
             context.log.info("Mode: One Event, All Sessions")
             logger.info("Mode: One Event, All Sessions")
