@@ -376,6 +376,16 @@ class StorageClient:
             )
             return object_key
 
+        # Special case for circuits
+        if data_type == "circuits":
+            object_key = f"{year}/circuits.parquet"
+            self.logger.info(
+                "| | | | | | Built object key for circuits %d: %s",
+                year,
+                object_key,
+            )
+            return object_key
+
         # For all other data types, event_name and session_type are required
         if event_name is None:
             raise ValueError(f"event_name is required for data_type '{data_type}'")

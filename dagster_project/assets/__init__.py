@@ -25,10 +25,10 @@ Assets are organized into modules:
 
 from dagster import load_assets_from_modules
 
-from dagster_project.assets import full_ingestion
+from dagster_project.assets import full_ingestion, circuits_ingestion
 
 
-all_assets = load_assets_from_modules(modules=[full_ingestion])
+all_assets = load_assets_from_modules(modules=[full_ingestion, circuits_ingestion])
 
 # Export all assets so Dagster can discover them
 # all_assets = [

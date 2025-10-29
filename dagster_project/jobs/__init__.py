@@ -20,7 +20,7 @@ from dagster_project.hooks import upload_logs_on_success, upload_logs_on_failure
 
 
 # ============================================================================
-# CONFIGURABLE JOB (Any Year/Event/Session)
+# CONFIGURABLE JOBS (Any Year/Event/Session)
 # ============================================================================
 
 
@@ -32,6 +32,14 @@ f1_configurable_session_job = define_asset_job(
         "type": "configurable",
         "scope": "as_per_config",
     },
+    hooks={upload_logs_on_success, upload_logs_on_failure},
+)
+
+f1_configurable_circuits_job = define_asset_job(
+    name="f1_configurable_circuits",
+    description="Ingest circuits information for any F1 season by giving the year",
+    selection=AssetSelection.groups("raw_configurable_circuits"),
+    tags={"type": "configurable", "scope": "year"},
     hooks={upload_logs_on_success, upload_logs_on_failure},
 )
 
@@ -56,6 +64,7 @@ f1_configurable_session_job = define_asset_job(
 # Export all jobs
 all_jobs = [
     f1_configurable_session_job,
+    f1_configurable_circuits_job,
 ]
 
 
