@@ -8,6 +8,58 @@ Jobs group related assets together for orchestration.
 
 from dagster import define_asset_job, AssetSelection
 
+# Import hooks
+from dagster_project.hooks import upload_logs_on_success, upload_logs_on_failure
+
+# Example: Job for specific assets
+# specific_job = define_asset_job(
+#     name="specific_job",
+#     selection=["asset1", "asset2"],  # Specific asset selection
+#     description="Specific pipeline",
+# ).with_hooks({upload_logs_on_success, upload_logs_on_failure})
+
+
+# ============================================================================
+# CONFIGURABLE JOB (Any Year/Event/Session)
+# ============================================================================
+
+
+f1_configurable_session_job = define_asset_job(
+    name="f1_configurable_session",
+    description="Ingest any F1 session by providing year, event_name, and session_type as config",
+    selection=AssetSelection.groups("raw_configurable"),
+    tags={
+        "type": "configurable",
+        "scope": "as_per_config",
+    },
+    hooks={upload_logs_on_success, upload_logs_on_failure},
+)
+
+
+# Note: To use the configurable job:
+# 1. In Dagster UI: Jobs → f1_configurable_session → Launch Run
+# 2. Provide config:
+#    {
+#      "ops": {
+#        "f1_session_configurable": {
+#          "config": {
+#            "year": 2023,
+#            "event_name": "Monaco Grand Prix",
+#            "session_type": "R"
+#          }
+#        }
+#      }
+#    }
+#
+# OR directly materialize the asset with config in the Assets tab
+
+# Export all jobs
+all_jobs = [
+    f1_configurable_session_job,
+]
+
+
+#### USEFUL CODE
 
 # # ============================================================================
 # # RACE WEEKEND JOBS
@@ -41,37 +93,3 @@ from dagster import define_asset_job, AssetSelection
 #         "scope": "all_sessions",
 #     },
 # )
-
-
-# ============================================================================
-# CONFIGURABLE JOB (Any Year/Event/Session)
-# ============================================================================
-
-
-f1_configurable_session_job = define_asset_job(
-    name="f1_configurable_session",
-    description="Ingest any F1 session by providing year, event_name, and session_type as config",
-    selection=AssetSelection.groups("raw_configurable"),
-    tags={
-        "type": "configurable",
-        "scope": "as_per_config",
-    },
-)
-
-
-# Note: To use the configurable job:
-# 1. In Dagster UI: Jobs → f1_configurable_session → Launch Run
-# 2. Provide config:
-#    {
-#      "ops": {
-#        "f1_session_configurable": {
-#          "config": {
-#            "year": 2023,
-#            "event_name": "Monaco Grand Prix",
-#            "session_type": "R"
-#          }
-#        }
-#      }
-#    }
-#
-# OR directly materialize the asset with config in the Assets tab
