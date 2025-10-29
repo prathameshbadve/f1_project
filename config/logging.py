@@ -189,6 +189,15 @@ def setup_logging():
             "maxBytes": int(os.getenv("LOG_MAX_SIZE", "10485760")),
             "backupCount": int(os.getenv("LOG_BACKUP_COUNT", "5")),
         },
+        # Dagster sepcific logs (outside the scope of pipeline)
+        "dagster": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "formatter": "detailed",
+            "filename": log_dir / "dagster.log",
+            "maxBytes": int(os.getenv("LOG_MAX_SIZE", "10485760")),
+            "backupCount": int(os.getenv("LOG_BACKUP_COUNT", "5")),
+        },
     }
 
     loggers = {
@@ -232,6 +241,86 @@ def setup_logging():
             "level": os.getenv("LOG_LEVEL", "INFO"),
             "propagate": False,
         },
+        # Dagster logs outside the scope of pipeline
+        "dagster": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster asset execution logs (context.log in assets)
+        "dagster.asset": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster op execution logs
+        "dagster.op": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster job execution logs
+        "dagster.job": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster hooks logs
+        "dagster.hooks": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster run logs
+        "dagster.run": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster event logs
+        "dagster.event": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster resources logs
+        "dagster.resources": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
     }
 
     if ENVIRONMENT == "production":
@@ -259,31 +348,6 @@ def setup_logging():
         # Adding the handlers to respective loggers
         loggers["data_ingestion"]["handlers"].append("data_ingestion_json")
         loggers["data_processing"]["handlers"].append("data_processing_json")
-
-    # elif ENVIRONMENT == "testing":
-    #     # Log file for unit tests
-    #     handlers["test_handler"] = {
-    #         "class": "logging.handlers.RotatingFileHandler",
-    #         "level": os.getenv("log_level", "INFO"),
-    #         "formatter": "detailed",
-    #         "filename": log_dir / "test.log",
-    #         "maxBytes": int(os.getenv("LOG_MAX_SIZE", "10485760")),
-    #         "backupCount": int(os.getenv("LOG_BACKUP_COUNT", "5")),
-    #     }
-    #     # For unit tests
-    #     loggers.update(
-    #         {
-    #             "test": {
-    #                 "handlers": [
-    #                     "console",
-    #                     "test_handler",
-    #                     "file_error",
-    #                 ],
-    #                 "level": "DEBUG",
-    #                 "propagate": False,
-    #             }
-    #         }
-    #     )
 
     # Log Configuration
     log_config = {
