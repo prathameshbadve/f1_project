@@ -7,21 +7,17 @@ Resources provide reusable connections to external systems
 
 import os
 import shutil
-from io import BytesIO
-from typing import Any, Dict, Optional
+from typing import Optional
 from datetime import datetime
 
-# import mlflow
-import pandas as pd
-from minio import Minio
 from dagster import ConfigurableResource, ResourceDependency
+from pydantic import Field
 
-# from psycopg2.pool import SimpleConnectionPool
-# from sqlalchemy import create_engine
-
-from config.settings import storage_config
 from config.logging import get_logger
+from config.settings import storage_config
 from src.utils.helpers import get_project_root, ensure_directory
+from src.clients.storage_client import StorageClient
+from src.clients.redis_client import RedisClient
 
 
 # ============================================================================
@@ -30,241 +26,26 @@ from src.utils.helpers import get_project_root, ensure_directory
 
 
 class StorageResource(ConfigurableResource):
-    """Resource for MinIO/S3 storage operations"""
+    """Dagster resource wrapper for StorageClient"""
 
-    endpoint: str
-    access_key: str
-    secret_key: str
-    bucket_raw: str
-    bucket_processed: str
-    secure: bool
-    region: Optional[str] = None
+    def create_client(self) -> StorageClient:
+        """Create and return StorageClient instance"""
+        # Your StorageClient initialization logic
+        return StorageClient()
 
-    def get_client(self) -> Minio:
-        """Get MinIO/S3 client"""
 
-        return Minio(
-            endpoint=self.endpoint,
-            access_key=self.access_key,
-            secret_key=self.secret_key,
-            secure=self.secure,
-            region=self.region,
-        )
+# ============================================================================
+# Redis Resource
+# ============================================================================
 
-    def build_object_key(
-        self,
-        data_type: str,
-        year: int,
-        event_name: Optional[str],
-        session_type: Optional[str],
-    ) -> str:
-        """
-        Build a standardized object key for F1 data.
 
-        Args:
-            year: Season year
-            data_type: Type of data (race_results, qualifying_results, laps, weather, schedule)
-            event_name: Name of the event (required unless data_type is 'schedule')
-            session_type: Q, R, S, etc. (required unless data_type is 'schedule')
+class RedisResource(ConfigurableResource):
+    """Dagster resource wrapper for RedisClient"""
 
-        Returns:
-            Object key string
-
-        Example:
-            >>> key = storage.build_object_key(2024, "race_results", "Bahrain Grand Prix", "R")
-            >>> print(key)
-            '2024/bahrain_grand_prix/R/race_results.parquet'
-
-            >>> key = storage.build_object_key(2024, "schedule")
-            >>> print(key)
-            '2024/schedule.parquet'
-        """
-
-        # Special case for schedule data
-        if data_type == "schedule":
-            object_key = f"{year}/season_{data_type}.parquet"
-            # logger.info(
-            #     "Built object key for season schedule %d: %s", year, object_key
-            # )
-            return object_key
-
-        # For all other data types, event_name and session_type are required
-        if event_name is None:
-            raise ValueError(f"event_name is required for data_type '{data_type}'")
-        if session_type is None:
-            raise ValueError(f"session_type is required for data_type '{data_type}'")
-
-        # Clean event name (lowercase, replace spaces with underscores)
-        clean_event = event_name.lower().replace(" ", "_")
-
-        # Build path: year/round_XX_event_name/data_type.parquet
-        object_key = f"{year}/{clean_event}/{session_type}/{data_type}.parquet"
-
-        # self.logger.info(
-        #     "Built object key for %s of %s %s %d: %s",
-        #     data_type,
-        #     event_name,
-        #     session_type,
-        #     year,
-        #     object_key,
-        # )
-
-        return object_key
-
-    def upload_dataframe(
-        self,
-        df: pd.DataFrame,
-        object_name: str,
-        bucket: Optional[str] = None,
-        format: str = "parquet",
-    ) -> None:
-        """
-        Upload pandas DataFrame to storage.
-
-        Args:
-            df: DataFrame to upload
-            object_name: Object key/path in storage
-            bucket: Bucket name (defaults to raw bucket)
-            format: File format ('parquet' or 'csv')
-        """
-
-        client = self.get_client()
-        bucket = bucket or self.bucket_raw
-
-        # Convert DataFrame to bytes
-        buffer = BytesIO()
-        if format == "parquet":
-            df.to_parquet(buffer, index=False)
-            content_type = "application/octet-stream"
-        elif format == "csv":
-            df.to_csv(buffer, index=False)
-            content_type = "text/csv"
-        else:
-            raise ValueError(f"Unsupported format: {format}")
-
-        # Upload
-        buffer.seek(0)
-        client.put_object(
-            bucket,
-            object_name,
-            buffer,
-            length=buffer.getbuffer().nbytes,
-            content_type=content_type,
-        )
-
-    def download_dataframe(
-        self,
-        bucket: str,
-        object_name: str,
-        format: str = "parquet",
-    ) -> pd.DataFrame:
-        """
-        Download DataFrame from storage.
-
-        Args:
-            bucket: Bucket name
-            object_name: Object key/path
-            format: File format ('parquet' or 'csv')
-
-        Returns:
-            pandas DataFrame
-        """
-
-        client = self.get_client()
-        response = client.get_object(bucket, object_name)
-
-        if format == "parquet":
-            return pd.read_parquet(BytesIO(response.read()))
-        elif format == "csv":
-            return pd.read_csv(BytesIO(response.read()))
-        else:
-            raise ValueError(f"Unsupported format: {format}")
-
-    def list_objects(self, bucket: str, prefix: str = "") -> list:
-        """List objects in bucket with optional prefix"""
-
-        client = self.get_client()
-        objects = client.list_objects(bucket, prefix=prefix, recursive=True)
-        return [obj.object_name for obj in objects]
-
-    def object_exists(self, bucket: str, object_name: str) -> bool:
-        """Check if object exists in bucket"""
-
-        try:
-            client = self.get_client()
-            client.stat_object(bucket, object_name)
-            return True
-        except Exception:  # pylint: disable=broad-exception-caught
-            return False
-
-    def delete_object(self, bucket: str, object_name: str) -> None:
-        """Delete an object from storage"""
-
-        client = self.get_client()
-        client.remove_object(bucket, object_name)
-
-    def get_object_metadata(self, bucket: str, object_name: str) -> Dict[str, Any]:
-        """Get metadata about an object"""
-
-        client = self.get_client()
-        stat = client.stat_object(bucket, object_name)
-
-        return {
-            "size": stat.size,
-            "last_modified": stat.last_modified,
-            "etag": stat.etag,
-            "content_type": stat.content_type,
-        }
-
-    def upload_file(
-        self,
-        local_path: str,
-        object_name: str,
-        bucket_name: Optional[str] = None,
-        content_type: str = "application/octet-stream",
-    ) -> None:
-        """
-        Upload a local file to MinIO storage.
-
-        Args:
-            local_path: Path to the local file
-            object_name: Object key/path in storage
-            bucket: Bucket name (defaults to raw bucket)
-            content_type: MIME type of the file
-        """
-
-        client = self.get_client()
-        bucket = bucket_name or self.bucket_raw
-
-        with open(local_path, "rb", encoding="utf-8") as file_data:
-            file_stat = os.stat(local_path)
-            client.put_object(
-                bucket,
-                object_name,
-                file_data,
-                length=file_stat.st_size,
-                content_type=content_type,
-            )
-
-    # def upload_json(self, bucket: str, object_name: str, data: str) -> None:
-    #     """Upload JSON data to storage"""
-
-    #     client = self.get_client()
-    #     data_bytes = data.encode("utf-8")
-    #     client.put_object(
-    #         bucket,
-    #         object_name,
-    #         BytesIO(data_bytes),
-    #         length=len(data_bytes),
-    #         content_type="application/json",
-    #     )
-
-    # def download_json(self, bucket: str, object_name: str) -> str:
-    #     """Download JSON data from storage"""
-
-    #     client = self.get_client()
-    #     response = client.get_object(bucket, object_name)
-    #     return response.read().decode("utf-8")
+    def create_client(self) -> RedisClient:
+        """Create and return StorageClient instance"""
+        # Your StorageClient initialization logic
+        return RedisClient()
 
 
 # ============================================================================
@@ -415,151 +196,23 @@ class LoggingResource(ConfigurableResource):
             return False
 
 
-# class DatabaseResource(ConfigurableResource):
-#     """Resource for PostgreSQL database operations"""
-
-#     host: str
-#     port: int
-#     database: str
-#     user: str
-#     password: str
-
-#     _pool: Optional[SimpleConnectionPool] = None
-
-#     def setup_for_execution(self, context: InitResourceContext) -> None:
-#         """Initialize connection pool"""
-
-#         self._pool = SimpleConnectionPool(
-#             minconn=1,
-#             maxconn=10,
-#             host=self.host,
-#             port=self.port,
-#             database=self.database,
-#             user=self.user,
-#             password=self.password,
-#         )
-
-#     def teardown_after_execution(self, context: InitResourceContext) -> None:
-#         """Close connection pool"""
-
-#         if self._pool:
-#             self._pool.closeall()
-
-#     def get_connection(self):
-#         """Get a connection from the pool"""
-
-#         if not self._pool:
-#             raise RuntimeError("Database pool not initialized")
-#         return self._pool.getconn()
-
-#     def return_connection(self, conn):
-#         """Return connection to the pool"""
-
-#         if self._pool:
-#             self._pool.putconn(conn)
-
-#     def execute_query(self, query: str, params: tuple = None) -> list:
-#         """Execute a SELECT query and return results"""
-
-#         conn = self.get_connection()
-#         try:
-#             with conn.cursor() as cursor:
-#                 cursor.execute(query, params)
-#                 return cursor.fetchall()
-#         finally:
-#             self.return_connection(conn)
-
-#     def execute_command(self, command: str, params: tuple = None) -> None:
-#         """Execute an INSERT/UPDATE/DELETE command"""
-
-#         conn = self.get_connection()
-#         try:
-#             with conn.cursor() as cursor:
-#                 cursor.execute(command, params)
-#                 conn.commit()
-#         finally:
-#             self.return_connection(conn)
-
-#     def execute_many(self, command: str, params_list: list) -> None:
-#         """Execute a command with multiple parameter sets"""
-
-#         conn = self.get_connection()
-#         try:
-#             with conn.cursor() as cursor:
-#                 cursor.executemany(command, params_list)
-#                 conn.commit()
-#         finally:
-#             self.return_connection(conn)
-
-#     def dataframe_to_sql(
-#         self, df: pd.DataFrame, table_name: str, if_exists: str = "append"
-#     ) -> None:
-#         """
-#         Write DataFrame to PostgreSQL table.
-
-#         Args:
-#             df: DataFrame to write
-#             table_name: Name of table
-#             if_exists: What to do if table exists ('fail', 'replace', 'append')
-#         """
-
-#         engine = create_engine(
-#             f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
-#         )
-
-#         df.to_sql(table_name, engine, if_exists=if_exists, index=False)
-
-#     def query_to_dataframe(self, query: str) -> pd.DataFrame:
-#         """Execute query and return results as DataFrame"""
-
-#         engine = create_engine(
-#             f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
-#         )
-
-#         return pd.read_sql(query, engine)
+# ============================================================================
+# Catalog Config Resource
+# ============================================================================
 
 
-# class MLflowResource(ConfigurableResource):
-#     """Resource for MLflow experiment tracking"""
+class CatalogConfig(ConfigurableResource):
+    """Configuration for catalog building"""
 
-#     tracking_uri: str
-#     experiment_name: str
-
-#     def setup_for_execution(self, context: InitResourceContext) -> None:
-#         """Configure MLflow"""
-
-#         mlflow.set_tracking_uri(self.tracking_uri)
-#         mlflow.set_experiment(self.experiment_name)
-
-#     def start_run(self, run_name: str = None, tags: Dict[str, str] = None):
-#         """Start an MLflow run"""
-
-#         return mlflow.start_run(run_name=run_name, tags=tags)
-
-#     def log_params(self, params: Dict[str, Any]) -> None:
-#         """Log parameters to MLflow"""
-
-#         mlflow.log_params(params)
-
-#     def log_metrics(self, metrics: Dict[str, float]) -> None:
-#         """Log metrics to MLflow"""
-
-#         mlflow.log_metrics(metrics)
-
-#     def log_artifact(self, local_path: str) -> None:
-#         """Log artifact to MLflow"""
-
-#         mlflow.log_artifact(local_path)
-
-#     def log_model(self, model, artifact_path: str) -> None:
-#         """Log model to MLflow"""
-
-#         mlflow.sklearn.log_model(model, artifact_path)
-
-#     def end_run(self) -> None:
-#         """End the current MLflow run"""
-
-#         mlflow.end_run()
+    raw_bucket: str = Field(
+        default="dev-f1-data-raw", description="Raw data bucket name"
+    )
+    processed_bucket: str = Field(
+        default="dev-f1-data-processed", description="Processed data bucket name"
+    )
+    years: Optional[list[int]] = Field(
+        default=None, description="Specific years to scan (None = all)"
+    )
 
 
 # ============================================================================
@@ -567,40 +220,25 @@ class LoggingResource(ConfigurableResource):
 # ============================================================================
 
 # Storage resource (MinIO/S3)
-storage_resource = StorageResource(
-    endpoint=storage_config.endpoint,
-    access_key=storage_config.access_key,
-    secret_key=storage_config.secret_key,
-    bucket_raw=storage_config.raw_bucket_name,
-    bucket_processed=storage_config.processed_bucket_name,
-    secure=storage_config.secure,
-    region=storage_config.region,
-)
+storage_resource = StorageResource()
+
+# Redis Resource
+redis_resource = RedisResource()
 
 # Logging resource
 logging_resource = LoggingResource(
-    bucket_name=storage_resource.bucket_raw,
+    bucket_name=storage_config.raw_bucket_name,
     log_dir=str(get_project_root() / os.getenv("LOG_DIR", "monitoring/logs")),
     upload_enabled=True,
 )
 
-# # Database resource (PostgreSQL)
-# database_resource = DatabaseResource(
-#     host=database_config.host,
-#     port=database_config.port,
-#     database=database_config.database,
-#     user=database_config.user,
-#     password=database_config.password,
-# )
-
-# # MLflow resource
-# mlflow_resource = MLflowResource(
-#     tracking_uri=mlflow_config.tracking_uri,
-#     experiment_name=mlflow_config.experiment_name,
-# )
+# Catalog Config resource
+catalog_config = CatalogConfig()
 
 
 all_resources = {
     "storage_resource": storage_resource,
     "logging_resource": logging_resource,
+    "redis_resource": redis_resource,
+    "catalog_config": catalog_config,
 }
