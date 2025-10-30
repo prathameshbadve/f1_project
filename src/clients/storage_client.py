@@ -75,6 +75,7 @@ class StorageClient:
         self,
         df: pd.DataFrame,
         object_key: str,
+        bucket_name: str = "dev-f1-data-raw",
         compression: str = "snappy",
     ) -> bool:
         """
@@ -112,7 +113,7 @@ class StorageClient:
 
             # Upload to MinIO
             self.client.put_object(
-                bucket_name=self.config.raw_bucket_name,
+                bucket_name=bucket_name,
                 object_name=object_key,
                 data=buffer,
                 length=size_bytes,
@@ -283,6 +284,44 @@ class StorageClient:
 
         except S3Error as e:
             self.logger.error("| | | | | | Failed to list objects: %s", str(e))
+            return []
+
+    def list_prefixes(self, bucket: str, prefix: str = "") -> List[str]:
+        """List directory prefixes (folders)"""
+
+        try:
+            # Ensure prefix ends with a slash if provided
+            if prefix and not prefix.endswith("/"):
+                prefix += "/"
+
+            objects = self.client.list_objects(
+                bucket_name=bucket,
+                prefix=prefix,
+                recursive=False,
+            )
+
+            prefixes = set()
+
+            for obj in objects:
+                # Each object name will start with the prefix
+                # We extract the next folder level
+                if obj.object_name.endswith("/"):
+                    # It's already a prefix (folder)
+                    relative_path = obj.object_name[len(prefix) :]
+                    subfolder = relative_path.strip("/")
+                    if "/" not in subfolder and subfolder:
+                        prefixes.add(subfolder)
+                else:
+                    # Extract prefix up to the next slash
+                    relative_path = obj.object_name[len(prefix) :]
+                    if "/" in relative_path:
+                        subfolder = relative_path.split("/", 1)[0]
+                        prefixes.add(subfolder)
+
+            return sorted(prefixes)
+
+        except S3Error as e:
+            print("Error accessing bucket %s: %s", bucket, str(e))
             return []
 
     def delete_object(self, object_key: str) -> bool:
@@ -521,3 +560,81 @@ class StorageClient:
                 summary["by_year"][obj_year] = summary["by_year"].get(obj_year, 0) + 1
 
         return summary
+
+    def upload_csv(
+        self,
+        df: pd.DataFrame,
+        object_key: str,
+        bucket_name: str = "dev-f1-data-raw",
+    ) -> bool:
+        """Upload df as csv to bucket"""
+
+        if df is None or df.empty:
+            self.logger.warning(
+                "| | | | | | Cannot upload empty DataFrame to %s", object_key
+            )
+            return False
+
+        try:
+            # Convert df to csv
+            buffer = io.BytesIO()
+            df.to_csv(
+                buffer,
+                index=False,
+            )
+
+            # Get size for logging
+            size_bytes = buffer.tell()
+            buffer.seek(0)
+
+            # Upload the file
+            self.client.put_object(
+                bucket_name=bucket_name,
+                object_name=object_key,
+                data=buffer,
+                length=size_bytes,
+                content_type="text/csv",
+            )
+            self.logger.info(
+                "| | | | | | ✅ Successfully uploaded %s to bucket %s",
+                object_key,
+                bucket_name,
+            )
+            return True
+
+        except S3Error as e:
+            print(f"❌ Upload failed: {e}")
+            return False
+
+    def upload_file(
+        self,
+        content,
+        object_key: str,
+        bucket_name: str = "dev-f1-raw-data",
+    ) -> bool:
+        """Uploads files to MinIO bucket"""
+
+        try:
+            buffer = io.BytesIO(content.encode("utf-8"))
+
+            # Get size for logging
+            size_bytes = len(content)
+            buffer.seek(0)
+
+            self.client.put_object(
+                bucket_name=bucket_name,
+                object_name=object_key,
+                data=buffer,
+                length=size_bytes,
+                content_type="text/markdown",
+            )
+            self.logger.info(
+                "| | | | | | ✅ Successfully uploaded %s to bucket %s",
+                object_key,
+                bucket_name,
+            )
+            return True
+
+        except S3Error as e:
+            print(f"❌ Upload failed: {e}")
+            return False
