@@ -247,9 +247,6 @@ runs/
 tmp/dagster/
 logs/dagster/
 
-# Dagster schedules and sensors state
-schedules/
-sensors/
 
 # MLflow tracking data (local development)
 mlruns/
