@@ -26,6 +26,8 @@ class StorageClient:
 
     def __init__(self, storage_cfg: StorageConfig = None):
         self.config = storage_cfg or storage_config
+        self.bucket_raw = self.config.raw_bucket_name
+        self.bucket_processed = self.config.processed_bucket_name
         self.logger = get_logger("data_ingestion.storage_client")
 
         # Initialize MinIO client
@@ -135,7 +137,11 @@ class StorageClient:
             )
             return False
 
-    def download_dataframe(self, object_key: str) -> Optional[pd.DataFrame]:
+    def download_dataframe(
+        self,
+        object_key: str,
+        bucket_name: str = "dev-f1-data-raw",
+    ) -> Optional[pd.DataFrame]:
         """
         Download a Parquet file as a pandas DataFrame.
 
@@ -152,7 +158,8 @@ class StorageClient:
         try:
             # Download object
             response = self.client.get_object(
-                bucket_name=self.config.raw_bucket_name, object_name=object_key
+                object_name=object_key,
+                bucket_name=bucket_name,
             )
 
             # Read Parquet from bytes
