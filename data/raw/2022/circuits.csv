@@ -1,0 +1,23 @@
+circuitId,circuitUrl,circuitName,lat,long,locality,country,Season
+albert_park,https://en.wikipedia.org/wiki/Albert_Park_Circuit,Albert Park Grand Prix Circuit,-37.8497,144.968,Melbourne,Australia,2022
+americas,https://en.wikipedia.org/wiki/Circuit_of_the_Americas,Circuit of the Americas,30.1328,-97.6411,Austin,USA,2022
+bahrain,https://en.wikipedia.org/wiki/Bahrain_International_Circuit,Bahrain International Circuit,26.0325,50.5106,Sakhir,Bahrain,2022
+baku,https://en.wikipedia.org/wiki/Baku_City_Circuit,Baku City Circuit,40.3725,49.8533,Baku,Azerbaijan,2022
+catalunya,https://en.wikipedia.org/wiki/Circuit_de_Barcelona-Catalunya,Circuit de Barcelona-Catalunya,41.57,2.26111,Montmeló,Spain,2022
+hungaroring,https://en.wikipedia.org/wiki/Hungaroring,Hungaroring,47.5789,19.2486,Budapest,Hungary,2022
+imola,https://en.wikipedia.org/wiki/Imola_Circuit,Autodromo Enzo e Dino Ferrari,44.3439,11.7167,Imola,Italy,2022
+interlagos,https://en.wikipedia.org/wiki/Interlagos_Circuit,Autódromo José Carlos Pace,-23.7036,-46.6997,São Paulo,Brazil,2022
+jeddah,https://en.wikipedia.org/wiki/Jeddah_Corniche_Circuit,Jeddah Corniche Circuit,21.6319,39.1044,Jeddah,Saudi Arabia,2022
+marina_bay,https://en.wikipedia.org/wiki/Marina_Bay_Street_Circuit,Marina Bay Street Circuit,1.2914,103.864,Marina Bay,Singapore,2022
+miami,https://en.wikipedia.org/wiki/Miami_International_Autodrome,Miami International Autodrome,25.9581,-80.2389,Miami,USA,2022
+monaco,https://en.wikipedia.org/wiki/Circuit_de_Monaco,Circuit de Monaco,43.7347,7.42056,Monte-Carlo,Monaco,2022
+monza,https://en.wikipedia.org/wiki/Monza_Circuit,Autodromo Nazionale di Monza,45.6156,9.28111,Monza,Italy,2022
+red_bull_ring,https://en.wikipedia.org/wiki/Red_Bull_Ring,Red Bull Ring,47.2197,14.7647,Spielberg,Austria,2022
+ricard,https://en.wikipedia.org/wiki/Circuit_Paul_Ricard,Circuit Paul Ricard,43.2506,5.79167,Le Castellet,France,2022
+rodriguez,https://en.wikipedia.org/wiki/Aut%C3%B3dromo_Hermanos_Rodr%C3%ADguez,Autódromo Hermanos Rodríguez,19.4042,-99.0907,Mexico City,Mexico,2022
+silverstone,https://en.wikipedia.org/wiki/Silverstone_Circuit,Silverstone Circuit,52.0786,-1.01694,Silverstone,UK,2022
+spa,https://en.wikipedia.org/wiki/Circuit_de_Spa-Francorchamps,Circuit de Spa-Francorchamps,50.4372,5.97139,Spa,Belgium,2022
+suzuka,https://en.wikipedia.org/wiki/Suzuka_International_Racing_Course,Suzuka Circuit,34.8431,136.541,Suzuka,Japan,2022
+villeneuve,https://en.wikipedia.org/wiki/Circuit_Gilles_Villeneuve,Circuit Gilles Villeneuve,45.5,-73.5228,Montreal,Canada,2022
+yas_marina,https://en.wikipedia.org/wiki/Yas_Marina_Circuit,Yas Marina Circuit,24.4672,54.6031,Abu Dhabi,UAE,2022
+zandvoort,https://en.wikipedia.org/wiki/Circuit_Zandvoort,Circuit Park Zandvoort,52.3888,4.54092,Zandvoort,Netherlands,2022

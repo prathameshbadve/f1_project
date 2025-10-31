@@ -1,0 +1,12 @@
+Time,Status,Message,EventName,SessionName,SessionDate
+0 days 00:07:13.128000,1,AllClear,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 00:07:13.128000,2,Yellow,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 00:08:32.384000,1,AllClear,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 01:18:18.928000,2,Yellow,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 01:18:28.703000,1,AllClear,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 01:18:29.579000,2,Yellow,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 01:18:50.912000,6,VSCDeployed,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 01:20:01.263000,7,VSCEnding,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 01:20:14.670000,1,AllClear,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 02:09:42.002000,2,Yellow,Italian Grand Prix,Race,2022-09-11 13:00:00
+0 days 02:10:43.523000,4,SCDeployed,Italian Grand Prix,Race,2022-09-11 13:00:00
