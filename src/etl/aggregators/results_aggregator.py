@@ -162,6 +162,7 @@ class RaceResultsAggregator(BaseAggregator):
             errors=self.errors,
         )
 
+    # pylint: disable=arguments-renamed, arguments-differ
     def _process_single_item(
         self,
         race_info: pd.Series,
@@ -223,6 +224,7 @@ class RaceResultsAggregator(BaseAggregator):
         required_columns = [
             "DriverId",
             "DriverNumber",
+            "Abbreviation",
             "FullName",
             "TeamId",
             "TeamName",
@@ -368,6 +370,7 @@ class RaceResultsAggregator(BaseAggregator):
         column_mapping = {
             "DriverNumber": "driver_number",
             "DriverId": "driver_id",
+            "Abbreviation": "driver_abbreviation",
             "FullName": "full_name",
             "TeamName": "team_name",
             "TeamId": "team_id",
@@ -402,6 +405,7 @@ class RaceResultsAggregator(BaseAggregator):
             # Driver info
             "driver_number",
             "driver_id",
+            "driver_abbreviation",
             "full_name",
             # Team info
             "team_id",
