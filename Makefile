@@ -35,6 +35,7 @@ start-services:
 	@echo "  ${YELLOW}MinIO UI:${RESET}    http://localhost:9001 (minioadmin/minioadmin)"
 	@echo "  ${YELLOW}MLflow UI:${RESET}   http://localhost:8080"
 	@echo "  ${YELLOW}PostgreSQL:${RESET}  localhost:5434 (f1user/f1pass)"
+	@echo "  ${YELLOW}Redis Commander:${RESET}  localhost:8081"
 	@echo ""
 	@echo "${YELLOW}Waiting for services to be healthy...${RESET}"
 	@sleep 10
@@ -74,6 +75,11 @@ restart: stop-services start-services
 restart-dagster:
 	docker-compose -f docker/docker-compose.local.yml restart dagster-webserver dagster-daemon
 	@echo "${GREEN}Dagster services restarted${RESET}"
+
+# Restart redis
+restart-redis:
+	docker-compose -f docker/docker-compose.local.yml restart redis redis-commander
+	@echo "${GREEN}Redis services restarted${RESET}"
 
 # Stop all services and remove volumes (WARNING: deletes all data!)
 clean:

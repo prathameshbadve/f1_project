@@ -8,43 +8,19 @@ Jobs group related assets together for orchestration.
 
 from dagster import define_asset_job, AssetSelection
 
+# Import hooks
+from dagster_project.hooks import upload_logs_on_success, upload_logs_on_failure
 
-# ============================================================================
-# RACE WEEKEND JOBS
-# ============================================================================
-
-
-italian_gp_2024_weekend_job = define_asset_job(
-    name="italian_gp_2024_weekend",
-    description="Ingest all sessions from Italian Grand Prix 2024 weekend",
-    selection=AssetSelection.groups("raw_italian_gp_2024"),
-    tags={
-        "event": "Italian Grand Prix",
-        "year": "2024",
-        "type": "race_weekend",
-    },
-)
+# Example: Job for specific assets
+# specific_job = define_asset_job(
+#     name="specific_job",
+#     selection=["asset1", "asset2"],  # Specific asset selection
+#     description="Specific pipeline",
+# ).with_hooks({upload_logs_on_success, upload_logs_on_failure})
 
 
 # ============================================================================
-# SEASON JOBS
-# ============================================================================
-
-
-f1_2024_season_all_sessions_job = define_asset_job(
-    name="f1_2024_season_all_sessions",
-    description="Ingest ALL sessions for 2024 season (100+ sessions)",
-    selection=AssetSelection.groups("raw_2024_season"),
-    tags={
-        "year": "2024",
-        "type": "full_season",
-        "scope": "all_sessions",
-    },
-)
-
-
-# ============================================================================
-# CONFIGURABLE JOB (Any Year/Event/Session)
+# CONFIGURABLE JOBS (Any Year/Event/Session)
 # ============================================================================
 
 
@@ -56,22 +32,40 @@ f1_configurable_session_job = define_asset_job(
         "type": "configurable",
         "scope": "as_per_config",
     },
+    hooks={upload_logs_on_success, upload_logs_on_failure},
+)
+
+f1_configurable_circuits_job = define_asset_job(
+    name="f1_configurable_circuits",
+    description="Ingest circuits information for any F1 season by giving the year",
+    selection=AssetSelection.groups("raw_configurable_circuits"),
+    tags={"type": "configurable", "scope": "year"},
+    hooks={upload_logs_on_success, upload_logs_on_failure},
 )
 
 
-# Note: To use the configurable job:
-# 1. In Dagster UI: Jobs → f1_configurable_session → Launch Run
-# 2. Provide config:
-#    {
-#      "ops": {
-#        "f1_session_configurable": {
-#          "config": {
-#            "year": 2023,
-#            "event_name": "Monaco Grand Prix",
-#            "session_type": "R"
-#          }
-#        }
-#      }
-#    }
-#
-# OR directly materialize the asset with config in the Assets tab
+# Job to build complete catalog
+build_catalog_job = define_asset_job(
+    name="build_catalog_job",
+    description="Build complete F1 race data catalog with validation",
+    selection=AssetSelection.groups("catalog"),
+    tags={"team": "data-engineering", "priority": "high"},
+)
+
+
+# Job to refresh just the report (faster)
+refresh_catalog_report_job = define_asset_job(
+    name="refresh_catalog_report_job",
+    description="Regenerate catalog report without rebuilding catalog",
+    selection=AssetSelection.keys(["catalog", "catalog_summary_report"]),
+    tags={"team": "data-engineering", "priority": "low"},
+)
+
+
+# Export all jobs
+all_jobs = [
+    f1_configurable_session_job,
+    f1_configurable_circuits_job,
+    build_catalog_job,
+    refresh_catalog_report_job,
+]

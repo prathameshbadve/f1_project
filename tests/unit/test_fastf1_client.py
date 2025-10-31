@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 import fastf1
 
-from src.data_ingestion.fastf1_client import FastF1Client
+from src.clients.fastf1_client import FastF1Client
 
 
 @pytest.mark.unit
@@ -56,7 +56,7 @@ class TestFastF1ClientConfiguration:
         session_types = fastf1_client.config.session_types
 
         assert isinstance(session_types, list)
-        assert "R" in session_types  # Race should always be included
+        assert "Race" in session_types  # Race should always be included
 
     def test_cache_dir_from_config(self, fastf1_client):
         """Test that cache directory comes from config"""

@@ -247,9 +247,6 @@ runs/
 tmp/dagster/
 logs/dagster/
 
-# Dagster schedules and sensors state
-schedules/
-sensors/
 
 # MLflow tracking data (local development)
 mlruns/
@@ -276,3 +273,7 @@ docker/.env.production
 # AWS credentials (NEVER commit these!)
 .aws/
 aws-credentials.json
+
+# Guides
+.guides/
+.archived_files

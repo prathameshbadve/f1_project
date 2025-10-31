@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 import pytest
 
-from src.data_ingestion.storage_client import StorageClient
-from src.data_ingestion.fastf1_client import FastF1Client
+from src.clients.storage_client import StorageClient
+from src.clients.fastf1_client import FastF1Client
 
 
 @pytest.mark.unit

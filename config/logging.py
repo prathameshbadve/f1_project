@@ -42,6 +42,16 @@ class ColoredFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         # Save the original levelname
         original_levelname = record.levelname
+        origial_name = record.name
+        original_func_name = record.funcName
+
+        # Truncate logger name to length of 30
+        if len(record.name) > 30:
+            record.name = record.name[:14] + "..." + record.name[-13:]
+
+        # Truncate function name
+        if len(record.funcName) > 30:
+            record.funcName = record.funcName[:14] + "..." + record.funcName[-13:]
 
         # Add color to level name
         if record.levelname in self.COLORS:
@@ -52,6 +62,35 @@ class ColoredFormatter(logging.Formatter):
 
         # Restore the original levelname so other handlers aren't affected
         record.levelname = original_levelname
+        record.name = origial_name
+        record.funcName = original_func_name
+
+        return result
+
+
+class DetailedFormatter(logging.Formatter):
+    """
+    Updates the logger and function names to a length of 30.
+    Uses the first 14 and last 13 characters and joins them with ellipsis(...)
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        origial_name = record.name
+        original_func_name = record.funcName
+
+        # Truncate logger name to length of 30
+        if len(record.name) > 30:
+            record.name = record.name[:14] + "..." + record.name[-13:]
+
+        # Truncate function name
+        if len(record.funcName) > 30:
+            record.funcName = record.funcName[:14] + "..." + record.funcName[-13:]
+
+        # Format the record
+        result = super().format(record)
+
+        record.name = origial_name
+        record.funcName = original_func_name
 
         return result
 
@@ -59,7 +98,7 @@ class ColoredFormatter(logging.Formatter):
 def setup_logging():
     """Function to setup logging (only runs once)"""
 
-    global _LOGGING_CONFIGURED
+    global _LOGGING_CONFIGURED  # pylint: disable=global-statement
 
     # Check if already configured
     if _LOGGING_CONFIGURED:
@@ -72,8 +111,9 @@ def setup_logging():
     # Formatters
     formatters = {
         "detailed": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s -"
-            " %(funcName)s:%(lineno)d - %(message)s",
+            "()": "config.logging.DetailedFormatter",
+            "format": "%(asctime)s - [%(levelname)-8s] - %(name)-30s -"
+            " [%(funcName)-30s:%(lineno)4d] - %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
         "json": {
@@ -89,8 +129,8 @@ def setup_logging():
         },
         "colored": {
             "()": "config.logging.ColoredFormatter",
-            "format": "%(asctime)s - %(name)s - %(levelname)s -"
-            " %(funcName)s:%(lineno)d - %(message)s",
+            "format": "%(asctime)s - [%(levelname)-8s] - %(name)-30s -"
+            " [%(funcName)-30s:%(lineno)4d] - %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     }
@@ -149,6 +189,15 @@ def setup_logging():
             "maxBytes": int(os.getenv("LOG_MAX_SIZE", "10485760")),
             "backupCount": int(os.getenv("LOG_BACKUP_COUNT", "5")),
         },
+        # Dagster sepcific logs (outside the scope of pipeline)
+        "dagster": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "formatter": "detailed",
+            "filename": log_dir / "dagster.log",
+            "maxBytes": int(os.getenv("LOG_MAX_SIZE", "10485760")),
+            "backupCount": int(os.getenv("LOG_BACKUP_COUNT", "5")),
+        },
     }
 
     loggers = {
@@ -192,6 +241,86 @@ def setup_logging():
             "level": os.getenv("LOG_LEVEL", "INFO"),
             "propagate": False,
         },
+        # Dagster logs outside the scope of pipeline
+        "dagster": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster asset execution logs (context.log in assets)
+        "dagster.asset": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster op execution logs
+        "dagster.op": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster job execution logs
+        "dagster.job": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster hooks logs
+        "dagster.hooks": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster run logs
+        "dagster.run": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster event logs
+        "dagster.event": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # Dagster resources logs
+        "dagster.resources": {
+            "handlers": [
+                "console",
+                "dagster",
+                "file_error",
+            ],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
     }
 
     if ENVIRONMENT == "production":
@@ -219,31 +348,6 @@ def setup_logging():
         # Adding the handlers to respective loggers
         loggers["data_ingestion"]["handlers"].append("data_ingestion_json")
         loggers["data_processing"]["handlers"].append("data_processing_json")
-
-    # elif ENVIRONMENT == "testing":
-    #     # Log file for unit tests
-    #     handlers["test_handler"] = {
-    #         "class": "logging.handlers.RotatingFileHandler",
-    #         "level": os.getenv("log_level", "INFO"),
-    #         "formatter": "detailed",
-    #         "filename": log_dir / "test.log",
-    #         "maxBytes": int(os.getenv("LOG_MAX_SIZE", "10485760")),
-    #         "backupCount": int(os.getenv("LOG_BACKUP_COUNT", "5")),
-    #     }
-    #     # For unit tests
-    #     loggers.update(
-    #         {
-    #             "test": {
-    #                 "handlers": [
-    #                     "console",
-    #                     "test_handler",
-    #                     "file_error",
-    #                 ],
-    #                 "level": "DEBUG",
-    #                 "propagate": False,
-    #             }
-    #         }
-    #     )
 
     # Log Configuration
     log_config = {
