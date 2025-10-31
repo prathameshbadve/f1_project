@@ -4,7 +4,6 @@ Lap Features Aggregation Asset
 Dagster asset that creates aggregated lap-level features for ML modeling.
 """
 
-from typing import Dict, Any
 import pandas as pd
 
 from dagster import asset, AssetExecutionContext, Output, MetadataValue
@@ -97,10 +96,10 @@ def aggregated_lap_features(
 
     context.log.info(f"Saving to: s3://{catalog_config.processed_bucket}/{output_key}")
 
-    storage_client.save_parquet(
+    storage_client.upload_dataframe(
         df=lap_features_df,
-        bucket=catalog_config.processed_bucket,
-        key=output_key,
+        bucket_name=catalog_config.processed_bucket,
+        object_key=output_key,
     )
 
     context.log.info("✅ Saved lap features file")
@@ -110,10 +109,10 @@ def aggregated_lap_features(
     sample_df = lap_features_df.head(100)
 
     try:
-        storage_client.save_csv(
+        storage_client.upload_csv(
             df=sample_df,
-            bucket=catalog_config.processed_bucket,
-            key=sample_key,
+            bucket_name=catalog_config.processed_bucket,
+            object_key=sample_key,
         )
         context.log.info(f"✅ Saved sample CSV: {sample_key}")
 
