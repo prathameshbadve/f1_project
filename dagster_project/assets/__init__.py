@@ -10,7 +10,15 @@ Assets are organized into modules:
 
 from dagster import load_assets_from_modules
 
-from dagster_project.assets import full_ingestion, circuits_ingestion, catalog_assets
+from dagster_project.assets import (
+    full_ingestion,
+    circuits_ingestion,
+    catalog_assets,
+    results_asset,
+    weather_assets,
+    lap_features_asset,
+    master_features_asset,
+)
 
 
 all_assets = load_assets_from_modules(
@@ -18,5 +26,9 @@ all_assets = load_assets_from_modules(
         full_ingestion,
         circuits_ingestion,
         catalog_assets,
+        results_asset,
+        weather_assets,
+        lap_features_asset,
+        master_features_asset,
     ]
 )
