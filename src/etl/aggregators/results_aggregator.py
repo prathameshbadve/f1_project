@@ -371,7 +371,7 @@ class RaceResultsAggregator(BaseAggregator):
             "DriverNumber": "driver_number",
             "DriverId": "driver_id",
             "Abbreviation": "driver_abbreviation",
-            "FullName": "full_name",
+            "FullName": "driver_name",
             "TeamName": "team_name",
             "TeamId": "team_id",
             "TeamColor": "team_color",
@@ -406,7 +406,7 @@ class RaceResultsAggregator(BaseAggregator):
             "driver_number",
             "driver_id",
             "driver_abbreviation",
-            "full_name",
+            "driver_name",
             # Team info
             "team_id",
             "team_name",
