@@ -213,6 +213,10 @@ class CatalogConfig(ConfigurableResource):
     years: Optional[list[int]] = Field(
         default=None, description="Specific years to scan (None = all)"
     )
+    aggregated_prefix: str = Field(
+        default="aggregated/",
+        description="Key of the directory that houses the aggregated data.",
+    )
 
 
 # ============================================================================
