@@ -3,7 +3,14 @@ Dagster asset to create race catalog
 """
 
 import pandas as pd
-from dagster import asset, AssetExecutionContext, Output, MetadataValue, AssetKey
+from dagster import (
+    asset,
+    AssetExecutionContext,
+    Output,
+    MetadataValue,
+    AssetKey,
+    AssetIn,
+)
 
 from dagster_project.resources import (
     StorageResource,
@@ -107,11 +114,14 @@ def f1_raw_race_catalog(
     group_name="catalog",
     compute_kind="python",
     description="Catalog with validation checks and quality flags",
-    deps=[AssetKey(["catalog", "raw_data_catalog"])],
+    ins={
+        "raw_data_catalog": AssetIn(key=AssetKey(["catalog", "raw_data_catalog"])),
+    },
 )
 def validated_catalog(
     context: AssetExecutionContext,
     raw_data_catalog: pd.DataFrame,
+    storage_resource: StorageResource,
 ) -> Output[pd.DataFrame]:
     """
     Add validation layer to catalog with graceful error handling.
@@ -132,6 +142,8 @@ def validated_catalog(
     context.log.info("=" * 80)
 
     catalog_df = raw_data_catalog.copy()
+
+    storage_client = storage_resource.create_client()
 
     # Initialize validation columns
     catalog_df["validation_passed"] = True
@@ -294,6 +306,12 @@ def validated_catalog(
         context.log.warning("⚠️  Validation found errors but not failing asset")
         context.log.warning("    Review validation_errors column in output")
 
+    storage_client.upload_dataframe(
+        df=catalog_df,
+        bucket_name="dev-f1-data-processed",
+        object_key="catalog/validated_catalog.parquet",
+    )
+
     # Return with validation metadata
     return Output(
         value=catalog_df,
@@ -329,12 +347,14 @@ def validated_catalog(
     group_name="catalog",
     compute_kind="markdown",
     description="Human-readable analysis report of catalog",
-    deps=[AssetKey(["catalog", "validated_catalog"])],
+    ins={
+        "validated_catalog": AssetIn(key=AssetKey(["catalog", "validated_catalog"])),
+    },
 )
 def catalog_summary_report(
     context: AssetExecutionContext,
-    validated_catalog: pd.DataFrame,
     storage_resource: StorageResource,
+    validated_catalog: pd.DataFrame,
     catalog_config: CatalogConfig,
 ) -> Output[str]:
     """
@@ -353,7 +373,7 @@ def catalog_summary_report(
 
     context.log.info("Generating catalog summary report...")
 
-    catalog_df = validated_catalog
+    catalog_df = validated_catalog.copy()
 
     # Build report
     lines = []

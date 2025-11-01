@@ -6,7 +6,14 @@ Dagster asset that creates aggregated lap-level features for ML modeling.
 
 import pandas as pd
 
-from dagster import asset, AssetExecutionContext, Output, MetadataValue
+from dagster import (
+    asset,
+    AssetExecutionContext,
+    Output,
+    MetadataValue,
+    AssetIn,
+    AssetKey,
+)
 
 from src.etl.aggregators.lap_aggregator import LapFeaturesAggregator
 from dagster_project.resources import CatalogConfig, StorageResource
@@ -14,12 +21,18 @@ from dagster_project.resources import CatalogConfig, StorageResource
 
 @asset(
     name="aggregated_lap_features",
+    key_prefix=["aggregation"],
+    group_name="aggregation",
+    compute_kind="python",
     description=(
         "Aggregated lap-level features for each driver in each race. "
         "Includes pace metrics, consistency, tire management, and position changes."
     ),
-    group_name="aggregation",
-    compute_kind="python",
+    ins={
+        "validated_catalog": AssetIn(
+            key=AssetKey(["catalog", "validated_catalog"]),
+        )
+    },
 )
 def aggregated_lap_features(
     context: AssetExecutionContext,

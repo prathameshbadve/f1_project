@@ -6,7 +6,14 @@ Dagster asset that creates aggregated weather features for each race session.
 
 import pandas as pd
 
-from dagster import asset, AssetExecutionContext, Output, MetadataValue
+from dagster import (
+    asset,
+    AssetExecutionContext,
+    Output,
+    MetadataValue,
+    AssetKey,
+    AssetIn,
+)
 
 from src.etl.aggregators.weather_aggregator import WeatherAggregator
 from dagster_project.resources import CatalogConfig, StorageResource
@@ -14,12 +21,16 @@ from dagster_project.resources import CatalogConfig, StorageResource
 
 @asset(
     name="aggregated_weather",
+    key_prefix=["aggregation"],
+    group_name="aggregation",
+    compute_kind="python",
     description=(
         "Aggregated weather conditions for each race session. "
         "Includes temperature, humidity, rainfall, wind, and weather stability metrics."
     ),
-    group_name="aggregation",
-    compute_kind="python",
+    ins={
+        "validated_catalog": AssetIn(key=AssetKey(["catalog", "validated_catalog"])),
+    },
 )
 def aggregated_weather(
     context: AssetExecutionContext,
@@ -49,6 +60,9 @@ def aggregated_weather(
     context.log.info("=" * 80)
     context.log.info("Starting Weather Aggregation")
     context.log.info("=" * 80)
+
+    # Aliasing validated catalog
+    # validated_catalog = catalog__validated_catalog.copy()
 
     # Create storage client
     storage_client = storage_resource.create_client()
